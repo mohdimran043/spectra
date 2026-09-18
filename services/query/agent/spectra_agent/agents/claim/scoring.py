@@ -51,6 +51,10 @@ from ...thresholds import (
     REFUTED_WEIGHT_RATIO,
 )
 
+# The rationale reads "<where the statement came from> | <the evidence tally>".
+# Splitting on this marker is what makes re-scoring idempotent.
+RATIONALE_SEPARATOR = " | "
+
 
 def score_claim(claim: Claim, ledger: EvidenceLedger) -> Claim:
     """Re-score ``claim`` against ``ledger`` - returns a NEW claim."""
@@ -121,17 +125,21 @@ def status_for(
 
 
 def rationale_for(claim: Claim, support: Sequence[EvidenceItem], contra: Sequence[EvidenceItem]) -> str:
-    """One line an analyst can audit: what backs this claim and what fights it."""
+    """One line an analyst can audit: what backs this claim and what fights it.
+
+    Rebuilt in full on every re-score, and the claim's origin is read back off
+    the previous line rather than appended to it, so re-scoring an unchanged
+    claim leaves an unchanged rationale instead of stacking tallies.
+    """
     sources = {item.provenance.source_id for item in support}
-    parts = [
+    tally = (
         f"{len(support)} supporting item(s) from {len(sources)} independent source(s), "
         f"weight {_total_weight(support):.2f}"
-    ]
+    )
     if contra:
-        parts.append(f"{len(contra)} conflicting item(s), weight {_total_weight(contra):.2f}")
-    if claim.rationale:
-        parts.insert(0, claim.rationale)
-    return "; ".join(parts)
+        tally += f"; {len(contra)} conflicting item(s), weight {_total_weight(contra):.2f}"
+    origin = claim.rationale.split(RATIONALE_SEPARATOR)[0].strip()
+    return f"{origin}{RATIONALE_SEPARATOR}{tally}" if origin else tally
 
 
 # -- terms ----------------------------------------------------------------

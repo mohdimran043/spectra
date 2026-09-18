@@ -152,6 +152,27 @@ NEGATION_MAP: dict[str, tuple[str, ...]] = {
 }
 
 
+def _opposites(mapping: dict[str, tuple[str, ...]]) -> dict[str, tuple[str, ...]]:
+    """Both readings of every pair, because negation is symmetric.
+
+    The table above is written one way round ("failed" -> "succeeded"), but an
+    item reporting that a payment succeeded conflicts with a claim that it failed
+    exactly as much as the other way about.  Generating the inverse keeps the
+    table short and stops stance depending on which way a claim happens to be
+    phrased.
+    """
+    both: dict[str, list[str]] = {term: list(antonyms) for term, antonyms in mapping.items()}
+    for term, antonyms in mapping.items():
+        for antonym in antonyms:
+            opposites = both.setdefault(antonym, [])
+            if term not in opposites:
+                opposites.append(term)
+    return {term: tuple(values) for term, values in both.items()}
+
+
+OPPOSITES: dict[str, tuple[str, ...]] = _opposites(NEGATION_MAP)
+
+
 def mine_categories(texts: list[str]) -> list[tuple[CausalCategory, list[str]]]:
     """Categories whose terms genuinely occur in ``texts``, with the terms found."""
     corpus = " \n".join(texts).lower()
@@ -178,10 +199,10 @@ def category_for_key(key: str) -> CausalCategory | None:
 
 
 def negate(text: str) -> list[str]:
-    """Negated readings of ``text`` built by antonym substitution."""
+    """Negated readings of ``text`` built by antonym substitution, either way round."""
     lowered = text.lower()
     variants: list[str] = []
-    for term, antonyms in NEGATION_MAP.items():
+    for term, antonyms in OPPOSITES.items():
         if term not in lowered:
             continue
         for antonym in antonyms:
@@ -192,12 +213,25 @@ def negate(text: str) -> list[str]:
 
 
 def competing_outcomes(text: str) -> list[str]:
-    """Counter-terms of every causal category mentioned in ``text``."""
+    """Wording that would conflict with ``text``, read in either direction.
+
+    A statement naming a cause is opposed by that cause's counter-terms, and a
+    statement naming the counter-outcome ("responded within the deadline") is
+    opposed by the cause itself.  Reading only the first direction made stance
+    depend on which way round a claim happened to be phrased: "it timed out" saw
+    "it responded in time" as a conflict, but not the reverse.
+    """
     lowered = text.lower()
     out: list[str] = []
+
+    def add(terms: Sequence[str]) -> None:
+        out.extend(term for term in terms if term not in out)
+
     for category in CAUSAL_CATEGORIES:
         if any(term in lowered for term in category.terms) or category.label in lowered:
-            out.extend(t for t in category.counter_terms if t not in out)
+            add(category.counter_terms)
+        if any(counter in lowered for counter in category.counter_terms):
+            add(category.terms)
     return out
 
 

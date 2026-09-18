@@ -47,7 +47,11 @@ class DisproofAgent:
         self._settings = settings or get_settings()
 
     def queries_for(self, claim: Claim) -> list[str]:
-        """The searches whose *hits* would weaken ``claim``."""
+        """The searches whose *hits* would weaken ``claim``.
+
+        The retrieval tool derives its own queries from the same string, so what
+        the trace reports is exactly what was searched for.
+        """
         return disproof_queries(self._attack_text(claim), limit=MAX_NEGATION_QUERIES)
 
     async def probe(
@@ -116,8 +120,14 @@ class DisproofAgent:
         return items
 
     def _attack_text(self, claim: Claim) -> str:
-        """What the probe is aimed at: the stated probe, else the claim itself."""
-        return claim.disproof_probe or claim.text
+        """What the probe is aimed at: the claim itself plus what would break it.
+
+        Both halves matter.  The claim text carries the outcome to negate
+        ("failed" -> "succeeded"); the stated probe names the competing outcome
+        to go looking for.  Read together they produce a fuller attack than
+        either does alone.
+        """
+        return " ".join(part for part in (claim.text, claim.disproof_probe) if part)
 
 
 def _tag(item: EvidenceItem, claim: Claim) -> EvidenceItem:

@@ -36,7 +36,7 @@ log = get_logger(__name__)
 
 API_TITLE = "SPECTRA"
 API_DESCRIPTION = (
-    "Hypothesis-driven multimodal enterprise investigation agent. "
+    "Evidence-grounded multimodal enterprise investigation agent. "
     "Resolves entities across documents, images, audio, video and structured databases; "
     "states only what the evidence supports and actively searches for evidence against it; "
     "detects contradictions; and returns every claim with its provenance."

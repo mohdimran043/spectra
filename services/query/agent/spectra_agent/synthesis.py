@@ -28,6 +28,7 @@ from spectra_schemas import (
 
 from . import sufficiency
 from .grounding import labels_for, split_sentences, unsupported_sentences
+from .lexicons import content_tokens, token_overlap
 from .llm import structured, text_messages
 from .thresholds import ANSWER_MAX_SENTENCES
 
@@ -54,6 +55,12 @@ SYSTEM_PROMPT = (
 # How many evidence items are offered to the answer; more than this and the
 # citations stop being checkable by a human reader.
 ANSWER_EVIDENCE_LIMIT = 8
+
+# The leading claim is itself drawn from the evidence, so the items backing it
+# restate it almost word for word.  Sentences this alike are the same sentence,
+# and repeating one is padding, not corroboration - the citations already show
+# how many sources agree.
+ANSWER_DEDUPE_OVERLAP = 0.7
 
 
 class AnswerSynthesiser:
@@ -137,24 +144,44 @@ class AnswerSynthesiser:
         self, state: InvestigationState, items: Sequence[EvidenceItem], labels: dict[str, str]
     ) -> str:
         index_of = {item.evidence_id: f"[E{i + 1}]" for i, item in enumerate(items)}
-        sentences: list[str] = []
+        answer = _Answer()
         leader = state.leading_claim()
         if leader is not None and leader.status in (ClaimStatus.SUPPORTED, ClaimStatus.WEAK):
             citations = "".join(index_of[e] for e in leader.supporting_evidence if e in index_of)
             if citations:
-                sentences.append(f"{leader.text.rstrip('.')}{_qualifier(leader)} {citations}.")
+                answer.add(leader.text.rstrip("."), f"{_qualifier(leader)} {citations}.")
         for item in items:
-            if len(sentences) >= ANSWER_MAX_SENTENCES:
+            if len(answer) >= ANSWER_MAX_SENTENCES:
                 break
-            sentences.append(f"{_statement(item)} {index_of[item.evidence_id]}.")
+            answer.add(_statement(item), f" {index_of[item.evidence_id]}.")
         for contradiction in state.contradictions[:1]:
             pair = "".join(
                 index_of[e] for e in (contradiction.evidence_a, contradiction.evidence_b) if e in index_of
             )
             if pair:
-                sentences.append(f"Sources disagree: {contradiction.statement.rstrip('.')} {pair}.")
-        text = " ".join(sentences)
-        return _drop_unsupported(text, labels)
+                answer.add(f"Sources disagree: {contradiction.statement.rstrip('.')}", f" {pair}.")
+        return _drop_unsupported(answer.text(), labels)
+
+
+class _Answer:
+    """Cited sentences, with anything already said left out."""
+
+    def __init__(self) -> None:
+        self._sentences: list[str] = []
+        self._keys: list[set[str]] = []
+
+    def __len__(self) -> int:
+        return len(self._sentences)
+
+    def add(self, statement: str, suffix: str) -> None:
+        key = content_tokens(statement)
+        if key and any(token_overlap(key, seen) >= ANSWER_DEDUPE_OVERLAP for seen in self._keys):
+            return
+        self._keys.append(key)
+        self._sentences.append(f"{statement}{suffix}")
+
+    def text(self) -> str:
+        return " ".join(self._sentences)
 
 
 def _qualifier(leader: Claim) -> str:

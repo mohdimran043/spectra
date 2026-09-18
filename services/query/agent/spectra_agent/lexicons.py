@@ -8,6 +8,7 @@ explicit, inspectable and free of any corpus-specific identifier.
 from __future__ import annotations
 
 import re
+from collections.abc import Collection
 
 from spectra_schemas import Modality
 
@@ -139,3 +140,11 @@ def keywords(text: str, limit: int = 12) -> list[str]:
 
 def content_tokens(text: str) -> set[str]:
     return {t.lower() for t in _WORD.findall(text) if t.lower() not in STOPWORDS and len(t) > 2}
+
+
+def token_overlap(left: Collection[str], right: Collection[str]) -> float:
+    """Jaccard overlap of two token sets - how much two statements say the same thing."""
+    first, second = set(left), set(right)
+    if not first or not second:
+        return 0.0
+    return len(first & second) / len(first | second)

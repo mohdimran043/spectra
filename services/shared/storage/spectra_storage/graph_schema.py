@@ -64,7 +64,7 @@ GRAPH_EDGE_TYPES: frozenset[str] = EVIDENCE_EDGE_TYPES | frozenset(
         "REPORTED_BY",
         "LINKED_TO",
         "INVESTIGATES",
-        "HAS_HYPOTHESIS",
+        "HAS_CLAIM",
         "HAS_CHUNK",
         "HAS_ASSET",
         "HAS_ENTITY",

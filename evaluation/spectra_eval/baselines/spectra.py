@@ -12,7 +12,7 @@ from .base import Baseline, BaselineResult
 
 class SpectraBaseline(Baseline):
     name = "spectra"
-    description = "Hypothesis-driven investigation with disproof and verification"
+    description = "Evidence-grounded investigation with disproof and verification"
     lacks = ()
 
     async def answer(self, question: BenchmarkQuestion, ctx: PermissionContext) -> BaselineResult:

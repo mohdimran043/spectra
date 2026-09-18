@@ -1,6 +1,6 @@
 # SPECTRA Implementation Progress
 
-> Hypothesis-Driven Multimodal Enterprise Investigation Agent
+> Evidence-Grounded Multimodal Enterprise Investigation Agent
 > Updated continuously. Every meaningful milestone records what was built, what was tested,
 > what failed and was fixed, and what remains.
 
@@ -27,7 +27,7 @@
 - [x] `packages/config/resources/applications.yaml` — application deep-link templates + id patterns
 - [x] `packages/config/resources/reliability.yaml` — configurable source-reliability model
 - [x] `packages/schemas` — 96 exported contracts: provenance locators, catalog, entities, retrieval,
-      evidence/hypotheses/contradictions/timeline, investigation state + structured answer, tools,
+      evidence/claims/contradictions/timeline, investigation state + structured answer, tools,
       model runtime, permissions, content-addressed id helpers
 - [x] `services/storage` interfaces — `VectorStore`, `LexicalStore`, `GraphStore`, `ObjectStore`,
       `CacheStore`, abstract `Repository`, `Storage` facade
@@ -152,6 +152,11 @@ rather than theoretical — loading the deep brain evicts the fast brain.
   The two vocabularies are now asserted equal.
 
 ## Phase 9 — The Brain  ✅ 2026-09-18
+
+> **Partly superseded by Phase 16 (2026-09-18).** The competing-hypothesis engine described in this
+> phase was removed and replaced by the claim builder; the record below is kept as history of what
+> was built and measured at the time. Everything else in this phase still stands.
+
 - [x] Query understanding (rule router + optional LLM refinement)
 - [x] 22 real callable tools with JSON schemas, validation, timeouts, telemetry
 - [x] Dynamic iterative loop (plan → act → observe → replan → sufficiency → verify)
@@ -233,8 +238,8 @@ rather than theoretical — loading the deep brain evicts the fast brain.
       `services/shared/` — so the tree answers "what does ingestion and what does search".
       Zero import changes: only `pyproject` package discovery moved.
 - [x] Each agent split into its own folder under `agents/`: document, vision, video, audio,
-      database, graph, entity_resolver, hypothesis, disproof, verifier, timeline, contradiction,
-      brain. Shared tool infrastructure stayed in `tools/`. Tool inventory verified identical
+      database, graph, entity_resolver, hypothesis (renamed `claim_builder` in Phase 16), disproof,
+      verifier, timeline, contradiction, brain. Shared tool infrastructure stayed in `tools/`. Tool inventory verified identical
       (22 tools, 12 agent values, same flags/timeouts/costs).
 - [x] **The ingestion/query split is enforced, not documented**: `spectra_ai_core.phase` refuses
       `ocr` / `transcribe` / `describe_image` / `embed_images` on the query path. 16 tests, including
@@ -261,12 +266,52 @@ Defect 2 also produced a false measurement: `mm_embedding` first timed at 7.98 s
 CLIP does it in 4.8 ms. It was contending with a 20 GB ollama model the scheduler believed it had
 evicted. After the fix it measures **9 ms** — a reminder that a number which looks wrong usually is.
 
+## Phase 16 — Claims replace competing hypotheses  ✅ 2026-09-18
+
+The competing-hypothesis engine was removed at the user's request and replaced with a claim-centric
+design. This is a behaviour change, not a rename.
+
+**Why.** The engine generated competing explanations, scored them against each other and normalised
+their confidences so the candidate set summed to about 1. A correct conclusion competing with six
+weak alternatives therefore peaked at about 16% confidence, fell below the sufficiency threshold,
+and the system abstained on questions it had in fact answered correctly. That was the last entry
+under Known Issues; entity grounding (Phase 9) reduced it but could not remove it, because the
+division is in the scoring model rather than in the candidate set. A confidence split between candidates measures
+how many alternatives were imagined, not how well the evidence backs the answer.
+
+**What replaces it.** The `claim_builder` agent derives claims directly from the retrieved evidence,
+grounded to the investigation's focal entity. Each claim is judged on its own evidence alone:
+supporting weight, independent-source count and evidence diversity, minus a contradiction penalty.
+No competition, no normalisation, so a well-supported conclusion keeps a high confidence.
+
+**What did not change.** The disproof agent is still mandatory and is now the load-bearing guard
+against over-confidence: it probes the leading claim (`leading_claim()`), and a claim its probe
+knocks down becomes `refuted` and drops out. Abstention keeps its own `AnswerStatus` and the
+benchmark suite keeps sixteen categories (`hypothesis_testing` became `claim_verification`).
+
+- [x] `Hypothesis` / `HypothesisStatus` deleted; `Claim` / `ClaimStatus`
+      (`supported · weak · contradicted · refuted · insufficient`) in their place — "disproved"
+      is now "refuted"
+- [x] `InvestigationState.hypotheses` → `claims`; `leading_hypothesis()` → `leading_claim()`;
+      `InvestigationAnswer.hypotheses` → `claims`
+- [x] `claims_made` / `claims_refuted` on the autopsy and metrics, `claim_count` on the case,
+      `claim_ids` on evidence, `claim_id` in `spectra_schemas.ids`
+- [x] Agent `hypothesis_engine` → `claim_builder`, flag `hypothesis` → `claim`,
+      `AgentName.HYPOTHESIS` → `AgentName.CLAIM`,
+      `ENABLE_HYPOTHESIS_ENGINE` → `ENABLE_CLAIM_BUILDER` (`enable_claim_builder`)
+- [x] `Hypothesis` dropped from the graph vocabulary: 17 node labels, 12 relationship types
+- [x] Documentation set updated — `README.md`, `docs/agent-design.md` (the loop is now
+      understand → plan → retrieve → build claims → sufficient? → disproof the leading claim →
+      contradictions → verify → synthesise), `docs/api.md`, `docs/architecture.md`,
+      `docs/data-model.md`, `docs/demo-guide.md`, `docs/evaluation.md`, `docs/scaling.md`,
+      `docs/search-architecture.md`
+
 ## Current State
 
 Phases 0–11 and 13 are complete and tested: contracts, storage, model gateway, ingestion, search,
 entity resolution, evidence, the Brain, connectors, the API/worker layer, and the demo dataset plus
-evaluation harness. The RTX 4090 is usable as of 2026-09-18, so the model gateway runs its CUDA
-candidates rather than its CPU fallbacks.
+evaluation harness. The reasoning layer is claim-centric as of Phase 16. The RTX 4090 is usable as
+of 2026-09-18, so the model gateway runs its CUDA candidates rather than its CPU fallbacks.
 
 Outstanding: the analyst investigation console (Phase 12) and the consolidated test/documentation
 pass (Phase 14).
@@ -285,10 +330,11 @@ pass (Phase 14).
 - `qwen3:30b-a3b` reports `5%/95% CPU/GPU` in `ollama ps`: at 18.6 GB declared it does not fully fit
   beside the other resident roles, so ollama offloads a slice. It works and the scheduler evicts to
   make room, but a deep-mode answer costs ~5 s rather than the ~2 s a fully-resident model would.
-- Deep-mode hypothesis confidence spreads across competing explanations, so a corpus dominated by
-  off-subject text can still push a correct conclusion below the sufficiency threshold and trigger
-  abstention. Entity grounding fixed the worst of this; the residual sensitivity is a tuning
-  question, and it is measurable through the benchmark suite.
+- Confidence is no longer divided between candidates (Phase 16), which removes the systematic
+  under-claiming that used to push correct conclusions below the sufficiency threshold. What remains
+  is ordinary threshold sensitivity: a claim whose support is thin, non-independent or drawn from one
+  modality still scores low and still abstains. That is intended behaviour rather than a defect, and
+  the `claim_verification` and abstention benchmark categories are where it is measured.
 
 ## Next Tasks
 

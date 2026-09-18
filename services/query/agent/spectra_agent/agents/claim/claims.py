@@ -18,6 +18,7 @@ there is no normalisation across claims and no probability that must sum to one.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from typing import Any
 
@@ -37,7 +38,7 @@ from spectra_schemas import (
 from ...causal_lexicon import competing_outcomes, negate
 from ...evidence_adapter import first_sentence
 from ...grounding import focal_terms
-from ...lexicons import content_tokens
+from ...lexicons import content_tokens, token_overlap
 from ...llm import structured, text_messages
 from ...stance import classify
 from ...sufficiency import names_subject
@@ -186,6 +187,8 @@ def _extract(items: Sequence[EvidenceItem], subject: str) -> list[Claim]:
         if len(claims) >= MAX_CLAIMS:
             break
         text = _statement(item, subject)
+        if text is None:
+            continue
         key = frozenset(content_tokens(text))
         if not key or _is_duplicate(key, seen):
             continue
@@ -246,23 +249,52 @@ def _renumber(state: InvestigationState, claims: Sequence[Claim]) -> list[Claim]
 
 
 def _is_duplicate(key: frozenset[str], seen: Sequence[frozenset[str]]) -> bool:
-    return any(_overlap(key, other) >= CLAIM_DEDUPE_OVERLAP for other in seen)
-
-
-def _overlap(left: frozenset[str], right: frozenset[str]) -> float:
-    if not left or not right:
-        return 0.0
-    return len(left & right) / len(left | right)
+    return any(token_overlap(key, other) >= CLAIM_DEDUPE_OVERLAP for other in seen)
 
 
 # -- text helpers ---------------------------------------------------------
-def _statement(item: EvidenceItem, subject: str) -> str:
-    """The evidence's own words, as one whole sentence that names the subject."""
-    text = first_sentence(item.summary or item.excerpt).strip().rstrip("…").strip()
-    text = text.rstrip(".").strip()
-    if subject and subject.lower() not in text.lower():
-        text = f"{subject}: {text}"
-    return f"{text}."
+# A claim has to read as an assertion. Serialised database rows and extracted
+# tables are excellent *evidence* but terrible *statements*: their first
+# "sentence" is a column header, which would surface as
+# "TX83155: | transaction_id | customer_id | amount | ...".
+MIN_STATEMENT_WORDS = 4
+MAX_PIPES_FOR_PROSE = 1
+MIN_ALPHA_RATIO = 0.6
+
+
+def _reads_as_prose(text: str) -> bool:
+    """Reject table rows, delimiter runs and key/value dumps."""
+    stripped = text.strip()
+    if len(stripped.split()) < MIN_STATEMENT_WORDS:
+        return False
+    if stripped.count("|") > MAX_PIPES_FOR_PROSE:
+        return False
+    if set(stripped) <= set("-=_| \t"):
+        return False
+    letters = sum(ch.isalpha() or ch.isspace() for ch in stripped)
+    return letters / len(stripped) >= MIN_ALPHA_RATIO
+
+
+def _prose_sentences(text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", (text or "").replace("\n", " "))
+    return [p.strip() for p in parts if _reads_as_prose(p)]
+
+
+def _statement(item: EvidenceItem, subject: str) -> str | None:
+    """The evidence's own words as one assertion, or None if it has none.
+
+    Returning None is deliberate: an item that carries no prose still counts as
+    evidence for another claim, it just cannot be the claim itself.
+    """
+    candidate = first_sentence(item.summary or item.excerpt).strip().rstrip("…").strip()
+    if not _reads_as_prose(candidate):
+        candidate = next(iter(_prose_sentences(f"{item.summary} {item.excerpt}")), "")
+    candidate = candidate.strip().rstrip("…").rstrip(".").strip()
+    if not candidate or not _reads_as_prose(candidate):
+        return None
+    if subject and subject.lower() not in candidate.lower():
+        candidate = f"{subject}: {candidate}"
+    return f"{candidate}."
 
 
 def _probe(text: str, subject: str) -> str:

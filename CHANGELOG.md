@@ -11,7 +11,41 @@ and the `APP_VERSION` environment variable. Bump it with
 
 ## [Unreleased]
 
+### Added
+
+- **Claims.** The `claim_builder` agent derives claims directly from the evidence an investigation
+  retrieved, grounded to its focal entity, and judges each one **on its own evidence alone**:
+  supporting weight, independent-source count and evidence diversity, minus a contradiction penalty.
+  There is no competition between claims and no normalisation across them, so a well-supported
+  conclusion keeps a high confidence.
+- `Claim` and `ClaimStatus` (`supported` · `weak` · `contradicted` · `refuted` · `insufficient`;
+  what was called "disproved" is now **refuted**). A claim carries `claim_id` (`C1`, `C2`, …),
+  `text`, `confidence`, `status`, `supporting_evidence`, `contradicting_evidence`, `disproof_probe`,
+  `disproof_searched`, `verified`, `verification_note` and `rationale`, plus the derived
+  `evidence_ids` and `confidence_label`.
+
 ### Changed
+
+- The disproof agent keeps its status — still mandatory — and now probes **the leading claim**
+  (`InvestigationState.leading_claim()`), asking what evidence would show it is wrong. With nothing
+  else competing for confidence, the disconfirming search is what keeps it honest: a claim the probe
+  knocks down becomes `refuted` and drops out of consideration. Abstention is unchanged and still
+  first-class.
+- Renamed across the contract:
+
+| Was | Is |
+|---|---|
+| `InvestigationState.hypotheses` | `claims` |
+| `InvestigationState.leading_hypothesis()` | `leading_claim()` |
+| `InvestigationAnswer.hypotheses` | `claims` |
+| `hypotheses_generated` / `hypotheses_disproved` (`SearchAutopsy`, `InvestigationMetrics`) | `claims_made` / `claims_refuted` |
+| `InvestigationCase.hypothesis_count` | `claim_count` |
+| `EvidenceItem.hypothesis_ids` | `claim_ids` |
+| agent `hypothesis_engine`, flag `hypothesis`, `AgentName.HYPOTHESIS` | `claim_builder`, flag `claim`, `AgentName.CLAIM` |
+| `ENABLE_HYPOTHESIS_ENGINE` / `enable_hypothesis_engine` | `ENABLE_CLAIM_BUILDER` / `enable_claim_builder` |
+| benchmark category `hypothesis_testing` | `claim_verification` (still sixteen categories) |
+| `spectra_schemas.ids.hypothesis_id` | `claim_id` |
+| SSE `event: hypotheses` | `event: claims` |
 
 - GPU documentation now reflects a **working RTX 4090** on the development host. The NVML
   *"Driver/library version mismatch"* is resolved (driver 580.178.04, CUDA 13.0,
@@ -33,8 +67,23 @@ and the `APP_VERSION` environment variable. Bump it with
   decode rate is `eval_count / eval_duration`, warm call includes prompt evaluation, and resident
   VRAM exceeds declared VRAM by the KV cache.
 
-Documents touched: `README.md`, `progress.md`, `docs/4090-deployment.md`, `docs/deployment.md`,
-`docs/demo-guide.md`, `docs/evaluation.md`, `apps/frontend/PRODUCT.md`.
+### Removed
+
+- **The competing-hypothesis engine**, at the user's request. It generated rival explanations, scored
+  them against each other and normalised their confidences so the candidate set summed to about 1.
+  That arithmetic was the defect: a correct conclusion competing with six weak alternatives peaked
+  near 16% confidence, fell below the sufficiency threshold, and the system abstained on questions it
+  had in fact answered correctly. A score divided between candidates measures how many alternatives
+  were imagined, not how well the evidence backs the answer.
+- With it: `Hypothesis`, `HypothesisStatus`, the `predicted_signals` mechanism, and the `Hypothesis`
+  graph node label (the vocabulary is now seventeen node labels and twelve relationship types).
+  The `[1.0.0]` entries below still describe the hypothesis engine, because that is what 1.0.0
+  shipped; they are history, not current behaviour.
+
+Documents touched: `README.md`, `progress.md`, `docs/agent-design.md`, `docs/api.md`,
+`docs/architecture.md`, `docs/data-model.md`, `docs/demo-guide.md`, `docs/evaluation.md`,
+`docs/scaling.md`, `docs/search-architecture.md`, `docs/4090-deployment.md`, `docs/deployment.md`,
+`apps/frontend/PRODUCT.md`.
 
 ## [1.0.0] - 2026-09-17
 

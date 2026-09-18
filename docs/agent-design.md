@@ -84,8 +84,8 @@ disproof_probe        ← what evidence would show this claim is wrong
 disproof_searched · verified · verification_note
 ```
 
-Ids are `C1`, `C2`, … within one investigation. `evidence_ids` is the union of the two evidence
-lists; `confidence_label` bands the score. The agent's toggleable flag is `claim`
+Ids are `C1`, `C2`, … within one investigation. `evidence_ids` is the two evidence lists together;
+`confidence_label` bands the score. The agent's toggleable flag is `claim`
 (`ENABLE_CLAIM_BUILDER=0`, setting `enable_claim_builder`); disabling it degrades the investigation
 like any other missing agent rather than failing it.
 
