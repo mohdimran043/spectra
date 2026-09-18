@@ -73,8 +73,8 @@ A link is only emitted when:
 on every retrieval path. Filtering happens **before** ranking, and `ctx.cache_key()` is part of every
 cache key, so a cached result can never cross a role boundary.
 
-Roles: `admin` (everything), `analyst` (search, investigate, upload, run SQL, autopsy, export),
-`viewer` (search and autopsy only). The header shim in `dependencies.py` is the only place that
+Roles: `admin` (search, upload, manage sources, manage models), `analyst` (search and upload),
+`viewer` (search only). The header shim in `dependencies.py` is the only place that
 constructs a context — replacing it with OAuth/OIDC/Keycloak touches that one file.
 
 ## Error handling

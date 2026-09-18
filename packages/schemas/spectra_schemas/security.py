@@ -7,19 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from .enums import Role
 
 ROLE_CAPABILITIES: dict[Role, set[str]] = {
-    Role.ADMIN: {
-        "search",
-        "investigate",
-        "upload",
-        "manage_sources",
-        "manage_agents",
-        "manage_models",
-        "run_sql",
-        "view_autopsy",
-        "export",
-    },
-    Role.ANALYST: {"search", "investigate", "upload", "run_sql", "view_autopsy", "export"},
-    Role.VIEWER: {"search", "view_autopsy"},
+    Role.ADMIN: {"search", "upload", "manage_sources", "manage_models"},
+    Role.ANALYST: {"search", "upload"},
+    Role.VIEWER: {"search"},
 }
 
 

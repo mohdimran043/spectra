@@ -122,9 +122,9 @@ Honest limitations of the current implementation at true production scale:
 
 - The embedded backends are development-grade by design. Brute-force cosine over a cached matrix is
   correct and fast to ~10⁵ vectors; beyond that you must use Qdrant.
-- The graph's embedded backend does bounded BFS in SQLite. Fine for investigation-sized
+- The graph's embedded backend does bounded BFS in SQLite. Fine for entity-neighbourhood-sized
   neighbourhoods, not for global analytics — use Neo4j.
 - The worker's job claim is simple polling. At high ingest rates it should become a real queue
   (the `CacheStore` interface already fronts Redis, so a Redis stream is the natural step).
-- Claim construction is one deep-brain call per investigation; at thousands of concurrent
-  investigations that becomes the cost centre, and would want batching at the inference pool.
+- Answer generation is one deep-brain call per query; at thousands of concurrent
+  queries that becomes the cost centre, and would want batching at the inference pool.

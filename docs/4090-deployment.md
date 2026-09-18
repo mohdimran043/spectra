@@ -69,7 +69,7 @@ Each rung is logged as a `ModelEvent`, surfaced in `degraded_reasons`, and shown
 | Speech | CUDA or CPU | ~4.5 GB | Ingestion only — never on the query path |
 | OCR | CPU | 0 | PaddleOCR CPU is fast enough for ingestion |
 
-Because ASR and OCR are ingestion-only, they never compete with the brain during a query. That is a
+Because ASR and OCR are ingestion-only, they never compete with generation during a query. That is a
 scheduling consequence of the ingestion/search split, not a coincidence.
 
 ## GPU dashboard
@@ -86,7 +86,7 @@ Active agent      —
 ```
 
 plus per-role state, runtime, device, VRAM, call count, average latency, error count, and a live feed
-of load/unload events. Watching models swap during a deep investigation is the clearest single
+of load/unload events. Watching models swap while searching is the clearest single
 demonstration of how the constraint is being managed.
 
 ## Verifying GPU availability

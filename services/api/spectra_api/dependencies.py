@@ -56,7 +56,6 @@ def require(capability: str):
 
 # Capability-scoped context types.  Declared as aliases rather than as parameter
 # defaults because FastAPI forbids `Depends` in both `Annotated` and a default.
-CtxInvestigate = Annotated[PermissionContext, Depends(require("investigate"))]
 CtxUpload = Annotated[PermissionContext, Depends(require("upload"))]
 CtxManageSources = Annotated[PermissionContext, Depends(require("manage_sources"))]
 CtxManageModels = Annotated[PermissionContext, Depends(require("manage_models"))]

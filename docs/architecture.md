@@ -184,7 +184,7 @@ Every retrievable unit carries a typed locator:
 | `DatabaseLocator` | source, table, primary key, record id, column |
 
 So a result can say `Document: Incident_Report.pdf | Page: 14 | Section: Authentication`, or
-`▶ Play from 01:24:17`, and the UI can open exactly that spot. No claim reaches a user without
+`▶ Play from 01:24:17`, and the UI can open exactly that spot. No result reaches a user without
 one.
 
 ---
@@ -215,7 +215,7 @@ things up.
 
 The search pipeline progresses through five sequential stages, each a small mostly-pure function
 that takes the previous stage's output and returns a payload with metrics. This design enables
-tracing, testing and the Search Autopsy view.
+tracing and testing.
 
 ### Stage 1: Candidate generation
 

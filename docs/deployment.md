@@ -169,7 +169,7 @@ docker compose -f docker-compose.yml -f docker-compose.lan.gpu.yml up -d
 ```
 
 Without the overlay the stack starts unchanged on a GPU-less machine. On such a
-host set `MODEL_PROFILE=cpu`; the Brain reports degraded mode rather than
+host set `MODEL_PROFILE=cpu`; the gateway reports degraded mode rather than
 failing. `./scripts/gpu-check.sh` reports driver, CUDA, container-runtime and
 PyTorch state, and names the specific blocker — a driver/library version
 mismatch, or a missing container runtime — explicitly.
@@ -302,7 +302,7 @@ Two databases in one PostgreSQL instance:
 
 | Database | Purpose | Written by |
 |----------|---------|-----------|
-| `spectra` | control plane: sources, assets, chunks, entities, entity_links, ingest_jobs, investigations, investigation_cases, trace_steps, index_versions, sql_audit | the API and worker |
+| `spectra` | control plane: sources, assets, chunks, entities, entity_keys, entity_links, ingest_jobs, index_versions | the API and worker |
 | `spectra_enterprise` | the `enterprise` demo business schema: customers, transactions, incidents, assets | nobody at runtime |
 
 The split is deliberate: "query a real business database" must be a genuine

@@ -240,7 +240,7 @@ independently of whether an answer was synthesised.
 
 Ingest a document, image, audio or video.
 
-**Request:** `file=<binary>`, optional `source_id`, `investigation_id`.
+**Request:** `file=<binary>`, optional `source_id`.
 
 **Response:** `202 Accepted` + `IngestJob`:
 

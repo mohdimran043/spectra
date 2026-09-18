@@ -15,9 +15,9 @@ class TestPermissionContext:
         analyst = PermissionContext(role=Role.ANALYST)
         viewer = PermissionContext(role=Role.VIEWER)
 
-        assert admin.can("manage_sources") and admin.can("run_sql")
-        assert analyst.can("run_sql") and not analyst.can("manage_sources")
-        assert viewer.can("search") and not viewer.can("run_sql") and not viewer.can("upload")
+        assert admin.can("manage_sources") and admin.can("manage_models")
+        assert analyst.can("upload") and not analyst.can("manage_sources")
+        assert viewer.can("search") and not viewer.can("upload")
 
     def test_denied_sources_win_over_everything(self):
         ctx = PermissionContext(role=Role.ADMIN, denied_sources=["src_secret"])

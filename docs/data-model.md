@@ -11,7 +11,6 @@ All ids are prefixed and, where possible, content-addressed so re-ingestion is i
 | `chunk_id` | `chk_<16 hex>` | `sha256(asset_id, ordinal, discriminator)` |
 | `entity_id` | `ent_<type>_<12 hex>` | `sha256(entity_type, normalized_key)` |
 | `evidence_id` | `evd_<14 hex>` | `sha256(chunk_or_record, claim_scope)` |
-| `investigation_id` | `inv_<16 hex>` | random |
 | `object_uri` | `spectra://objects/<aa>/<sha256>.<ext>` | content hash |
 
 Nothing anywhere stores a filesystem path as a reference.
@@ -40,20 +39,9 @@ entity_links(entity_id IDX, chunk_id IDX, asset_id, source_id, modality, surface
 ingest_jobs(job_id PK, asset_id, source_id, status, stage, progress, message, error,
             created_at, updated_at, stages_completed)
 
-investigations(investigation_id PK, case_id IDX, goal, mode, status, state JSON,
-               confidence, created_at, updated_at, user_id, role)
-
-investigation_cases(case_id PK, title, question, investigation_ids JSON, entity_ids JSON,
-                    status, created_at, updated_at, evidence_count, claim_count, confidence)
-
-trace_steps(step_id PK, investigation_id IDX, sequence, agent, tool, status, title,
-            input_summary, output_summary, started_at, completed_at, latency_ms,
-            evidence_ids JSON, error, metadata)
-
 index_versions(index_version PK, embedding_model, embedding_dimension, parser_version,
                vision_model, speech_model, ocr_engine, created_at)
 
-sql_audit(id PK, source_id, sql, params JSON, user_id, rows, ok, error, created_at)
 ```
 
 ## Enterprise demo database (separate, reached through the connector)
@@ -86,23 +74,22 @@ Two collections, because text and image embeddings have different dimensions and
 `spectra_lexical` — one document per chunk with `text`, `title` and the same filter payload. The
 tokeniser preserves alphanumeric identifiers intact.
 
-## Evidence graph
+## Entity graph
 
-**Node labels (17):** Person · Customer · Transaction · Incident · Event · Document · Page · Image ·
-Video · Scene · Frame · Audio · AudioSegment · DatabaseRecord · ApplicationRecord · Claim · Evidence
+**Node labels (15):** Person · Customer · Transaction · Incident · Event · Document · Page · Image ·
+Video · Scene · Frame · Audio · AudioSegment · DatabaseRecord · ApplicationRecord
 
-**Relationship types (12):** MENTIONS · REFERS_TO · SAME_ENTITY · SUPPORTS · CONTRADICTS ·
-CAUSED_BY · PRECEDES · SUPERSEDES · DERIVED_FROM · BELONGS_TO · EVIDENCE_FOR · OPENED_AS
+**Relationship types (10):** MENTIONS · REFERS_TO · SAME_ENTITY · CAUSED_BY · PRECEDES ·
+SUPERSEDES · DERIVED_FROM · BELONGS_TO · OPENED_AS · IS
 
-Both sets are validated allowlists. Built **incrementally** during ingestion and investigation —
-never as a batch rebuild.
+Both sets are validated allowlists. Built **incrementally** during ingestion — never as a batch
+rebuild.
 
 Typical cross-modal shape:
 
 ```
 (Document)-[:MENTIONS]->(Transaction)<-[:REFERS_TO]-(Scene)-[:BELONGS_TO]->(Video)
 (DatabaseRecord)-[:IS]->(Transaction)-[:CAUSED_BY]->(Incident)
-(Evidence)-[:SUPPORTS|CONTRADICTS|EVIDENCE_FOR]->(Claim)
 ```
 
 ## Index versioning

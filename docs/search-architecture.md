@@ -115,15 +115,12 @@ five are included.
 
 | | Fast | Deep |
 |---|---|---|
-| Tool calls | ≤ 5 | ≤ 30 |
-| Latency target | ~3 s | ~60 s |
-| Iterations | 1 | up to 8 |
-| Deep brain | no | yes |
-| Claims / disproof / verifier | no | yes |
-| Typical path | ID detect → database → answer | full investigation |
+| Reranker | no | yes |
+| Latency target | ~1 s | ~3 s |
+| Typical path | ID detect → exact + BM25 → answer | full hybrid + cross-encoder |
 
-Fast mode exists because `Find transaction TX82931` should not cost a 30B-parameter forward pass.
-The Brain stops as soon as the evidence is sufficient — budget is a ceiling, not a target.
+Fast mode exists because `TX82931` should not cost a cross-encoder pass over the whole candidate
+set. Both modes run the same five stages; deep mode simply widens the candidate pool and reranks.
 
 ---
 
