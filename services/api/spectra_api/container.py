@@ -162,6 +162,7 @@ async def build_container(settings: Settings | None = None) -> ServiceContainer:
                 gateway=container.gateway,
             ),
             broker=container.trace_broker,
+            flags_provider=container.agent_flags,
         )
         missing = container.investigations._services.missing()  # noqa: SLF001 - startup diagnostics
         if missing:

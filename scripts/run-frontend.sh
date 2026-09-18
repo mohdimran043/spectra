@@ -10,7 +10,10 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../apps/frontend" && pwd)"
 PORT="${PORT:-3000}"
-HOSTNAME="${HOSTNAME:-0.0.0.0}"
+# NOTE: `HOSTNAME` is a bash built-in already set to the machine name, so
+# `${HOSTNAME:-0.0.0.0}` silently binds Next to that host and the server
+# becomes unreachable on every other interface. Use our own variable.
+BIND_HOST="${BIND_HOST:-0.0.0.0}"
 API_ORIGIN="${SPECTRA_API_ORIGIN:-http://127.0.0.1:8000}"
 
 cd "$APP_DIR"
@@ -28,6 +31,6 @@ if [[ -d public ]]; then
   cp -r public/. .next/standalone/public/
 fi
 
-echo "serving on http://${HOSTNAME}:${PORT} (API proxied to ${API_ORIGIN})"
-exec env SPECTRA_API_ORIGIN="$API_ORIGIN" PORT="$PORT" HOSTNAME="$HOSTNAME" \
+echo "serving on http://${BIND_HOST}:${PORT} (API proxied to ${API_ORIGIN})"
+exec env SPECTRA_API_ORIGIN="$API_ORIGIN" PORT="$PORT" HOSTNAME="$BIND_HOST" \
   node .next/standalone/server.js

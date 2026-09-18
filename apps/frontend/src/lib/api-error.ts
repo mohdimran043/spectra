@@ -1,6 +1,6 @@
 import type { ZodError } from 'zod';
 
-import { API_BASE_URL } from './env';
+import { API_BASE_LABEL } from './env';
 
 export type ApiErrorKind = 'http' | 'network' | 'contract' | 'stream';
 
@@ -57,7 +57,7 @@ export function networkError(path: string, cause: unknown): SpectraApiError {
     code: 'api_unreachable',
     status: undefined,
     path,
-    reason: `Cannot reach the SPECTRA API at ${API_BASE_URL}. The request to ${path} failed before a response arrived (${causeText}). Start the API service, or point NEXT_PUBLIC_API_BASE_URL at a running instance.`,
+    reason: `Cannot reach the SPECTRA API at ${API_BASE_LABEL}. The request to ${path} failed before a response arrived (${causeText}). Start the API service, or point NEXT_PUBLIC_API_BASE_URL at a running instance.`,
   });
 }
 

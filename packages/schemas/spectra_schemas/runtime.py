@@ -108,6 +108,10 @@ class HealthReport(BaseModel):
     status: str = "ok"
     version: str = "1.0.0"
     deployment_mode: str = "development"
+    #: One entry per checked component, each carrying at least a `status`.
     components: dict[str, dict] = Field(default_factory=dict)
+    #: Which backend implements each store. Not a component - it has no health
+    #: of its own - so it is reported alongside them rather than among them.
+    backends: dict[str, str] = Field(default_factory=dict)
     degraded: bool = False
     checked_at: datetime = Field(default_factory=_now)

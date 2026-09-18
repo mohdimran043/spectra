@@ -78,12 +78,16 @@ class SpectraBrain:
         on_trace: OnTrace | None = None,
         save_state: SaveState | None = None,
         load_state: LoadState | None = None,
+        flags_provider: Callable[[], dict[str, bool]] | None = None,
     ) -> None:
         self._settings = settings or get_settings()
         self._recorder = wrap(services.gateway)
         self._services = replace(services, gateway=self._recorder) if self._recorder else services
-        self._flags = self._settings.agent_flags()
-        self._registry = registry or build_registry(self._flags)
+        # Flags are read on every use, not captured here: the Agent Control
+        # Center toggles them at runtime, and a snapshot taken at construction
+        # would make those toggles silently inert.
+        self._flags_provider = flags_provider or self._settings.agent_flags
+        self._registry = registry or build_registry(self._flags_provider())
         self._understanding = understanding or QueryUnderstandingService(self._settings, self._recorder)
         self._claims = claims or ClaimBuilder(self._settings, self._recorder)
         self._disproof = disproof
@@ -98,7 +102,7 @@ class SpectraBrain:
         self._engine = ExecutionEngine(self._registry, self._tracer.emit)
         self._phases = ReasoningPhases(
             settings=self._settings,
-            flags=self._flags,
+            flags_provider=self._flags_provider,
             claims=self._claims,
             verifier=self._verifier,
             tracer=self._tracer,
@@ -106,6 +110,11 @@ class SpectraBrain:
         )
 
     # -- public API -------------------------------------------------------
+    @property
+    def _current_flags(self) -> dict[str, bool]:
+        """Agent flags as they are *now*, including runtime overrides."""
+        return self._flags_provider()
+
     async def investigate(
         self,
         question: str,
@@ -211,11 +220,11 @@ class SpectraBrain:
             mode=state.mode,
             goal=state.goal,
             uploaded_asset_ids=tuple(state.uploaded_asset_ids),
-            agent_flags=dict(self._flags),
+            agent_flags=dict(self._current_flags),
         )
 
     def _apply_availability(self, state: InvestigationState) -> InvestigationState:
-        report = availability.build(self._flags, self._registry, self._services)
+        report = availability.build(self._current_flags, self._registry, self._services)
         state = state_ops.touch(state, agent_availability=report)
         for reason in availability.degraded_reasons(report):
             state = state_ops.degraded(state, reason)
@@ -306,7 +315,7 @@ class SpectraBrain:
     async def _conclude(self, state: InvestigationState, *, allow_llm: bool) -> InvestigationState:
         started = perf_counter()
         answer = await self._synthesiser.compose(state, allow_llm=allow_llm)
-        score = sufficiency.compute(state.evidence)
+        score = sufficiency.compute(state.evidence, state.goal)
         status = conclusion.answer_status(state, score, self._settings.sufficiency_threshold)
         confidence = conclusion.confidence_for(state, score, status)
         state = state_ops.touch(
@@ -342,7 +351,7 @@ class SpectraBrain:
 
     # -- plumbing ---------------------------------------------------------
     def _available(self) -> list[str]:
-        return self._registry.available_names(self._flags)
+        return self._registry.available_names(self._current_flags)
 
     def _budget_stop(self, state: InvestigationState, elapsed: float) -> str | None:
         """The reason the budget forces a stop, if it does."""
@@ -359,7 +368,7 @@ class SpectraBrain:
         """The reason the evidence allows a stop, if it does."""
         if state.budget.iterations_used < MIN_DEEP_ITERATIONS:
             return None
-        if sufficiency.compute(state.evidence) < self._settings.sufficiency_threshold:
+        if sufficiency.compute(state.evidence, state.goal) < self._settings.sufficiency_threshold:
             return None
         leader = state.leading_claim()
         # The stop test reads the leader's *status*: its own balance of evidence,

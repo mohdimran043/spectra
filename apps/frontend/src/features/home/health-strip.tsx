@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { cn } from '@/components/cn';
 import { StatusChip } from '@/components/chip';
 import { ErrorState } from '@/components/states';
-import { API_BASE_URL } from '@/lib/env';
+import { API_BASE_LABEL } from '@/lib/env';
 import { formatRelative } from '@/lib/format';
 import { humaniseKey, type StatusTone } from '@/lib/vocab';
 import { useHealth } from '@/features/shell/use-health';
@@ -40,7 +40,7 @@ export function HealthStrip() {
     return (
       <div className="flex items-center gap-2 border border-rule bg-leaf px-3 py-2" aria-busy="true">
         <span className="text-micro uppercase tracking-[0.08em] text-ink-2">
-          Checking {API_BASE_URL}
+          Checking {API_BASE_LABEL}
         </span>
         <span className="rule-progress h-px flex-1 bg-rule" />
       </div>

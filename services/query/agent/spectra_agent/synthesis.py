@@ -73,7 +73,7 @@ class AnswerSynthesiser:
     async def compose(self, state: InvestigationState, *, allow_llm: bool = True) -> str:
         """The cited answer, or an explicit abstention when nothing supports one."""
         items = sorted(state.evidence.items, key=lambda i: i.weight, reverse=True)[:ANSWER_EVIDENCE_LIMIT]
-        score = sufficiency.compute(state.evidence)
+        score = sufficiency.compute(state.evidence, state.goal)
         threshold = self._settings.sufficiency_threshold
         intent = state.understanding.intent if state.understanding else None
         authoritative = sufficiency.authoritative_item(state.evidence, intent)

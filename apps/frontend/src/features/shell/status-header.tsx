@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/components/cn';
 import { StatusChip } from '@/components/chip';
 import { IconSearch } from '@/components/icons';
-import { API_BASE_URL } from '@/lib/env';
+import { API_BASE_LABEL } from '@/lib/env';
 import { NAV_DIVISIONS } from './nav-items';
 import { RoleSwitcher } from './role-switcher';
 import { ThemeToggle } from './theme-toggle';
@@ -66,7 +66,7 @@ export function StatusHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
         <Link
           href="/settings"
           className="rounded-sm"
-          title={`SPECTRA API · ${API_BASE_URL}`}
+          title={`SPECTRA API · ${API_BASE_LABEL}`}
         >
           <StatusChip tone={apiState.tone}>{apiState.label}</StatusChip>
         </Link>

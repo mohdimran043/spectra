@@ -27,3 +27,6 @@ export const APP_BASE_URL = normaliseBaseUrl(RAW_APP_BASE_URL, DEFAULT_APP_BASE_
 
 /** True when the deployment is running on the built-in defaults. */
 export const IS_USING_DEFAULT_API_BASE_URL = !RAW_API_BASE_URL;
+
+/** What to show a human: an empty base means "this site's own origin". */
+export const API_BASE_LABEL = API_BASE_URL || 'same origin (/api)';

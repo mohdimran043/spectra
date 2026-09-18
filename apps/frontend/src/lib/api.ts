@@ -60,14 +60,20 @@ export function buildUrl(
   path: string,
   searchParams?: RequestOptions['searchParams'],
 ): string {
-  const url = new URL(path.startsWith('/') ? path : `/${path}`, `${API_BASE_URL}/`);
+  // In same-origin mode API_BASE_URL is empty and the request goes to /api/*
+  // on whichever host served the page. `new URL(path, '')` and
+  // `new URL(path, '/')` both throw, and during SSR there is no origin to
+  // resolve against, so the URL is assembled as a string instead.
+  const normalisedPath = path.startsWith('/') ? path : `/${path}`;
+  const query = new URLSearchParams();
   if (searchParams) {
     for (const [key, value] of Object.entries(searchParams)) {
       if (value === undefined || value === '') continue;
-      url.searchParams.set(key, String(value));
+      query.set(key, String(value));
     }
   }
-  return url.toString();
+  const suffix = query.toString();
+  return `${API_BASE_URL}${normalisedPath}${suffix ? `?${suffix}` : ''}`;
 }
 
 async function readErrorEnvelope(

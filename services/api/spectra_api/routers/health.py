@@ -17,7 +17,6 @@ API_VERSION = "1.0.0"
 @router.get("/health", response_model=HealthReport)
 async def health(container: Container) -> HealthReport:
     components = await container.storage.health()
-    components["backends"] = _describe_backends(container.settings)
 
     if container.gateway is not None:
         status = await container.gateway.status()
@@ -41,6 +40,7 @@ async def health(container: Container) -> HealthReport:
     overall = "error" if unhealthy else ("degraded" if degraded else "ok")
 
     return HealthReport(
+        backends=_describe_backends(container.settings),
         status=overall,
         version=API_VERSION,
         deployment_mode=container.settings.deployment_mode.value,

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import importlib
 import inspect
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from spectra_config import Settings, get_settings
@@ -267,13 +267,20 @@ async def build_investigation_service(
     *,
     services: AgentServices | None = None,
     broker: TraceBroker | None = None,
+    flags_provider: Callable[[], dict[str, bool]] | None = None,
 ) -> InvestigationService:
-    """Assemble the Brain with every injected dependency it can reach."""
+    """Assemble the Brain with every injected dependency it can reach.
+
+    ``flags_provider`` lets the caller supply agent flags that change at
+    runtime (the Agent Control Center); without it the Brain falls back to the
+    configured settings.
+    """
     resolved = settings or get_settings()
     resolved_services = services or await load_peer_services(resolved)
     resolved_broker = broker or TraceBroker()
     store = store_for(resolved_services.storage)
     brain = SpectraBrain(
+        flags_provider=flags_provider,
         services=resolved_services,
         settings=resolved,
         broker=resolved_broker,

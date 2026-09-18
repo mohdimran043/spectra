@@ -8,7 +8,7 @@ purpose is to try to knock the leading claim down.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from time import perf_counter
 
 from spectra_config import Settings
@@ -40,14 +40,16 @@ class ReasoningPhases:
         self,
         *,
         settings: Settings,
-        flags: Mapping[str, bool],
+        flags_provider: Callable[[], Mapping[str, bool]],
         claims: ClaimBuilder,
         verifier: Verifier,
         tracer: Tracer,
         disproof: DisproofAgent | None = None,
     ) -> None:
         self._settings = settings
-        self._flags = dict(flags)
+        # Read live so an Agent Control Center toggle takes effect on the very
+        # next investigation rather than needing a restart.
+        self._flags_provider = flags_provider
         self._claims = claims
         self._verifier = verifier
         self._tracer = tracer
@@ -58,7 +60,7 @@ class ReasoningPhases:
         self, state: InvestigationState, *, allow_llm: bool = True
     ) -> InvestigationState:
         """Build (when needed), link and score the claims the evidence supports."""
-        if not self._flags.get("claim", True):
+        if not self._flags_provider().get("claim", True):
             return await self._tracer.step(
                 state,
                 AgentName.CLAIM,
@@ -93,7 +95,7 @@ class ReasoningPhases:
         leader = state.leading_claim()
         if leader is None:
             return state
-        if not self._flags.get("disproof", True):
+        if not self._flags_provider().get("disproof", True):
             run.state = await self._tracer.step(
                 state,
                 AgentName.DISPROOF,
@@ -155,7 +157,7 @@ class ReasoningPhases:
         state = run.state
         leader = state.leading_claim()
         statement = leader.text if leader else state.goal
-        if not self._flags.get("verifier", True):
+        if not self._flags_provider().get("verifier", True):
             run.state = await self._tracer.step(
                 state,
                 AgentName.VERIFIER,

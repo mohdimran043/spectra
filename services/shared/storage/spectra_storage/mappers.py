@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from spectra_config.logging import get_logger
 from spectra_schemas import (
     Asset,
     CanonicalEntity,
@@ -39,6 +40,8 @@ from .models import (
     SqlAuditRow,
     TraceStepRow,
 )
+
+log = get_logger(__name__)
 
 
 def json_payload(model: BaseModel) -> dict[str, Any]:
@@ -293,8 +296,66 @@ def investigation_values(state: InvestigationState) -> dict[str, Any]:
     }
 
 
+# Investigations persisted before the competing-hypothesis engine was removed
+# carry fields the current models reject (`extra="forbid"`). A schema change
+# must not make stored work unreadable, so those payloads are upgraded on read.
+LEGACY_DROPPED_KEYS = ("hypotheses",)
+LEGACY_ITEM_DROPPED_KEYS = ("hypothesis_ids", "evidence_ids")
+LEGACY_AGENT_NAMES = {"hypothesis_engine": "claim_builder"}
+LEGACY_CLAIM_STATUS = {
+    "contested": "weak",
+    "open": "insufficient",
+    "disproved": "refuted",
+}
+
+
+def upgrade_investigation_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``payload`` readable by the current models."""
+    state = dict(payload)
+    for key in LEGACY_DROPPED_KEYS:
+        state.pop(key, None)
+
+    evidence = state.get("evidence")
+    if isinstance(evidence, dict) and isinstance(evidence.get("items"), list):
+        items = []
+        for item in evidence["items"]:
+            if isinstance(item, dict):
+                item = {k: v for k, v in item.items() if k not in LEGACY_ITEM_DROPPED_KEYS}
+            items.append(item)
+        state["evidence"] = {**evidence, "items": items}
+
+    trace = state.get("trace")
+    if isinstance(trace, list):
+        state["trace"] = [
+            {**step, "agent": LEGACY_AGENT_NAMES.get(step.get("agent"), step.get("agent"))}
+            if isinstance(step, dict)
+            else step
+            for step in trace
+        ]
+
+    claims = state.get("claims")
+    if isinstance(claims, list):
+        upgraded = []
+        for claim in claims:
+            if isinstance(claim, dict):
+                claim = {k: v for k, v in claim.items() if k not in LEGACY_ITEM_DROPPED_KEYS}
+                status = claim.get("status")
+                if status in LEGACY_CLAIM_STATUS:
+                    claim = {**claim, "status": LEGACY_CLAIM_STATUS[status]}
+            upgraded.append(claim)
+        state["claims"] = upgraded
+
+    return state
+
+
 def investigation_model(row: InvestigationRow) -> InvestigationState:
-    return InvestigationState.model_validate(row.state)
+    try:
+        return InvestigationState.model_validate(row.state)
+    except ValidationError:
+        upgraded = upgrade_investigation_payload(row.state)
+        state = InvestigationState.model_validate(upgraded)
+        log.info("investigation.upgraded_from_legacy", investigation_id=state.investigation_id)
+        return state
 
 
 def case_values(case: InvestigationCase) -> dict[str, Any]:

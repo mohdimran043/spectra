@@ -11,7 +11,7 @@ import { Leaf, LeafHead, Reading, Rule } from '@/components/leaf';
 import { Division, DivisionIntro } from '@/components/page';
 import { ErrorState, SkeletonRows } from '@/components/states';
 import { getModelRuntime, listSources } from '@/lib/api';
-import { API_BASE_URL, APP_BASE_URL, IS_USING_DEFAULT_API_BASE_URL } from '@/lib/env';
+import { API_BASE_LABEL, APP_BASE_URL, IS_USING_DEFAULT_API_BASE_URL } from '@/lib/env';
 import { formatMegabytes } from '@/lib/format';
 import { queryKeys } from '@/lib/query-keys';
 import { ROLE_CAPABILITIES, ROLE_SUMMARY, type Role, type ThemePreference } from '@/lib/role';
@@ -125,7 +125,7 @@ export function SettingsDivision() {
         <Leaf>
           <LeafHead title="Connections" />
           <div className="grid gap-x-6 gap-y-3 p-3 md:grid-cols-2">
-            <Reading label="SPECTRA API" value={API_BASE_URL} mono />
+            <Reading label="SPECTRA API" value={API_BASE_LABEL} mono />
             <Reading label="Enterprise application" value={APP_BASE_URL} mono />
             <Reading
               label="API status"

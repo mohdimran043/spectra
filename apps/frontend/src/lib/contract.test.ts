@@ -8,6 +8,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { buildUrl } from './api';
+
 import agentStatus from './__fixtures__/agent-status.json';
 import asset from './__fixtures__/asset.json';
 import canonicalEntity from './__fixtures__/canonical-entity.json';
@@ -225,5 +227,33 @@ describe('API contract', () => {
   it('never silently accepts a malformed payload', () => {
     expect(() => searchResponseSchema.parse({ query: 5 })).toThrow();
     expect(() => investigationAnswerSchema.parse({})).toThrow();
+  });
+});
+
+describe('URL building', () => {
+  it('builds a root-relative URL in same-origin mode', () => {
+    // `new URL(path, '')` throws "Invalid base URL"; the builder must not use it.
+    expect(buildUrl('/api/health')).toBe('/api/health');
+    expect(buildUrl('api/health')).toBe('/api/health');
+  });
+
+  it('appends query parameters and skips empty ones', () => {
+    expect(buildUrl('/api/entities', { q: 'TX1', type: '', limit: 5 })).toBe(
+      '/api/entities?q=TX1&limit=5',
+    );
+  });
+
+  it('never throws for any documented route', () => {
+    for (const path of [
+      '/api/health',
+      '/api/models',
+      '/api/agents/status',
+      '/api/search',
+      '/api/investigations',
+      '/api/sources',
+      '/api/stream/investigation/inv_1',
+    ]) {
+      expect(() => buildUrl(path)).not.toThrow();
+    }
   });
 });
