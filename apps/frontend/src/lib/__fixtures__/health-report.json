@@ -1,5 +1,9 @@
 {
-  "checked_at": "2026-09-18T09:08:02.257121Z",
+  "backends": {
+    "relational": "sqlite",
+    "vector": "embedded"
+  },
+  "checked_at": "2026-09-18T09:42:05.269782Z",
   "components": {
     "models": {
       "detail": "no GPU",
@@ -7,6 +11,7 @@
     },
     "vectors": {
       "backend": "embedded",
+      "detail": null,
       "status": "ok"
     }
   },

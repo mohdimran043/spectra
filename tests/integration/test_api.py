@@ -30,9 +30,17 @@ class TestHealth:
             assert component in body["components"], component
 
     def test_health_names_the_active_backends(self, client):
-        backends = client.get("/api/health").json()["components"]["backends"]
-        assert backends["relational"] == "sqlite"
-        assert backends["vector"] == "embedded"
+        """`backends` is top-level: it has no health of its own, so validating
+        it as a component made the whole payload invalid for the console."""
+        body = client.get("/api/health").json()
+        assert body["backends"]["relational"] == "sqlite"
+        assert body["backends"]["vector"] == "embedded"
+        assert "backends" not in body["components"]
+
+    def test_every_component_carries_a_status(self, client):
+        for name, component in client.get("/api/health").json()["components"].items():
+            assert isinstance(component, dict), name
+            assert "status" in component, name
 
     def test_model_state_is_reported_honestly(self, client):
         """Health must mirror the real hardware, and never claim a capability it lacks.

@@ -48,14 +48,15 @@ class DetectContradictionsTool(Tool):
         items = select_evidence(ctx, args.get("evidence_ids"), limit=CANDIDATE_POOL)
         if len(items) < 2:
             return self.empty("at least two evidence items are needed to detect a contradiction")
-        detector = getattr(getattr(ctx.services.evidence, "contradictions", None), "detect", None)
-        found = None
-        if detector is not None:
-            found = await maybe_await(detector(items))
+        # Scope to what this investigation is about: a disagreement elsewhere in
+        # the corpus is not this question's business.
+        focal = list(ctx.focal_entities)
+        limit = int(args.get("limit", DEFAULT_CONTRADICTION_LIMIT))
+        found = local_contradictions.detect(items, limit=limit, focal=focal)
         if not found:
-            found = local_contradictions.detect(
-                items, limit=int(args.get("limit", DEFAULT_CONTRADICTION_LIMIT))
-            )
+            detector = getattr(getattr(ctx.services.evidence, "contradictions", None), "detect", None)
+            if detector is not None:
+                found = await maybe_await(detector(items))
         if not found:
             return self.empty(f"no contradictions among {len(items)} evidence item(s)")
         return self.success(

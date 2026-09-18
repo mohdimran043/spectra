@@ -278,9 +278,15 @@ FIXTURES = {
     "trace-step": _trace_step(),
     "model-runtime-status": _model_status(),
     "health-report": HealthReport(
-        status="degraded", degraded=True,
-        components={"vectors": {"backend": "embedded", "status": "ok"},
-                    "models": {"status": "degraded", "detail": "no GPU"}},
+        status="degraded",
+        degraded=True,
+        components={
+            # A healthy component reports no detail at all - the schema must
+            # accept that rather than demanding a string.
+            "vectors": {"backend": "embedded", "status": "ok", "detail": None},
+            "models": {"status": "degraded", "detail": "no GPU"},
+        },
+        backends={"relational": "sqlite", "vector": "embedded"},
     ),
     "agent-status": [
         AgentStatus(name="image", label="Vision Agent", enabled=False, ready=False,

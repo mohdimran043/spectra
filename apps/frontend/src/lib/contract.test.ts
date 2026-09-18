@@ -198,6 +198,26 @@ describe('API contract', () => {
     expect(parsed.components.models?.status).toBe('degraded');
   });
 
+  it('accepts a healthy component that reports no detail', () => {
+    // A healthy component has nothing to explain and sends detail: null.
+    // Requiring a string here rejected the whole payload and the console
+    // showed "API UNREACHABLE" against a perfectly healthy API.
+    expect(() =>
+      healthReportSchema.parse({
+        status: 'ok',
+        components: { vectors: { backend: 'embedded', status: 'ok', detail: null } },
+      }),
+    ).not.toThrow();
+  });
+
+  it('reads backends from the top level, not from components', () => {
+    // `backends` maps a store to its implementation; it has no status of its
+    // own, so it must never be validated as a component.
+    const parsed = healthReportSchema.parse(healthReport);
+    expect(parsed.backends.relational).toBe('sqlite');
+    expect(parsed.components.backends).toBeUndefined();
+  });
+
   it('parses a disabled agent with its alternatives', () => {
     const parsed = agentStatusSchema.array().parse(agentStatus);
     expect(parsed[0]?.enabled).toBe(false);

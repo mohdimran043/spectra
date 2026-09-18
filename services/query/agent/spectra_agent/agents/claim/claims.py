@@ -262,6 +262,17 @@ MAX_PIPES_FOR_PROSE = 1
 MIN_ALPHA_RATIO = 0.6
 
 
+# Retrieval marks matched terms with guillemets so the console can highlight
+# them. They are presentation, not content, and must never reach a claim.
+HIGHLIGHT_MARKS = ("\u00ab", "\u00bb")
+
+
+def _strip_highlights(text: str) -> str:
+    for mark in HIGHLIGHT_MARKS:
+        text = text.replace(mark, "")
+    return text
+
+
 def _reads_as_prose(text: str) -> bool:
     """Reject table rows, delimiter runs and key/value dumps."""
     stripped = text.strip()
@@ -286,9 +297,9 @@ def _statement(item: EvidenceItem, subject: str) -> str | None:
     Returning None is deliberate: an item that carries no prose still counts as
     evidence for another claim, it just cannot be the claim itself.
     """
-    candidate = first_sentence(item.summary or item.excerpt).strip().rstrip("…").strip()
+    candidate = _strip_highlights(first_sentence(item.summary or item.excerpt)).strip().rstrip("…").strip()
     if not _reads_as_prose(candidate):
-        candidate = next(iter(_prose_sentences(f"{item.summary} {item.excerpt}")), "")
+        candidate = next(iter(_prose_sentences(_strip_highlights(f"{item.summary} {item.excerpt}"))), "")
     candidate = candidate.strip().rstrip("…").rstrip(".").strip()
     if not candidate or not _reads_as_prose(candidate):
         return None

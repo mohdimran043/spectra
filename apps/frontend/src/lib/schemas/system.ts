@@ -18,7 +18,8 @@ import {
 export const healthComponentSchema = z.object({
   backend: z.string().optional(),
   status: z.string(),
-  detail: z.string().optional(),
+  // A healthy component has nothing to explain, so the API sends null here.
+  detail: z.string().nullish(),
 });
 export type HealthComponent = z.infer<typeof healthComponentSchema>;
 
@@ -29,6 +30,9 @@ export const healthReportSchema = z.object({
   degraded: z.boolean().default(false),
   checked_at: isoDateTimeSchema.optional(),
   components: z.record(healthComponentSchema).default({}),
+  // Which backend implements each store. Reported alongside the components
+  // rather than among them, because a backend choice has no health of its own.
+  backends: z.record(z.string()).default({}),
 });
 export type HealthReport = z.infer<typeof healthReportSchema>;
 

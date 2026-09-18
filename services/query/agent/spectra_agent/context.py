@@ -65,6 +65,9 @@ class ToolContext:
     uploaded_asset_ids: tuple[str, ...] = ()
     ledger_provider: Callable[[], EvidenceLedger] = _empty_ledger
     contradiction_provider: Callable[[], list[Contradiction]] = _no_contradictions
+    #: Canonical entity ids this investigation is about, for tools that must
+    #: scope their work to the subject rather than the whole corpus.
+    focal_entities: tuple[str, ...] = ()
     agent_flags: dict[str, bool] = field(default_factory=dict)
 
     def with_budget(self, budget: BudgetState) -> ToolContext:
@@ -76,6 +79,7 @@ class ToolContext:
             self,
             ledger_provider=lambda: state.evidence,
             contradiction_provider=lambda: list(state.contradictions),
+            focal_entities=tuple(getattr(state, "entities", ()) or ()),
         )
 
     def ledger(self) -> EvidenceLedger:
