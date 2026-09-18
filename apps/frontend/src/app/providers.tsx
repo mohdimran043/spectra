@@ -5,7 +5,6 @@ import { useCallback, useState, type ReactNode } from 'react';
 
 import { TooltipProvider } from '@/components/overlays';
 import { SpectraApiError } from '@/lib/api-error';
-import { ExplorerProvider } from '@/features/evidence/explorer-context';
 import { SessionProvider } from '@/features/shell/session-context';
 
 const RETRY_LIMIT = 2;
@@ -40,7 +39,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <SessionProvider onRoleChange={onRoleChange}>
         <TooltipProvider>
-          <ExplorerProvider>{children}</ExplorerProvider>
+          {children}
         </TooltipProvider>
       </SessionProvider>
     </QueryClientProvider>

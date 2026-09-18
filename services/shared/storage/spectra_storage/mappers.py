@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from spectra_config.logging import get_logger
 from spectra_schemas import (
     Asset,
@@ -21,10 +21,7 @@ from spectra_schemas import (
     EntityLink,
     IndexVersion,
     IngestJob,
-    InvestigationCase,
-    InvestigationState,
     SourceDescriptor,
-    TraceStep,
 )
 
 from .models import (
@@ -34,11 +31,7 @@ from .models import (
     EntityRow,
     IndexVersionRow,
     IngestJobRow,
-    InvestigationCaseRow,
-    InvestigationRow,
     SourceRow,
-    SqlAuditRow,
-    TraceStepRow,
 )
 
 log = get_logger(__name__)
@@ -279,175 +272,6 @@ def job_model(row: IngestJobRow) -> IngestJob:
     )
 
 
-# -- investigations -------------------------------------------------------
-def investigation_values(state: InvestigationState) -> dict[str, Any]:
-    return {
-        "investigation_id": state.investigation_id,
-        "case_id": state.case_id,
-        "goal": state.goal,
-        "mode": state.mode.value,
-        "status": state.status.value,
-        "answer_status": state.answer_status.value,
-        "confidence": state.confidence,
-        "user_id": state.user_id,
-        "created_at": state.created_at,
-        "updated_at": state.updated_at,
-        "state": json_payload(state),
-    }
-
-
-# Investigations persisted before the competing-hypothesis engine and the
-# Contradiction Radar were removed carry fields the current models reject
-# (`extra="forbid"`). A schema change must not make stored work unreadable, so
-# those payloads are upgraded on read.
-LEGACY_DROPPED_KEYS = ("hypotheses", "contradictions")
-LEGACY_ITEM_DROPPED_KEYS = ("hypothesis_ids", "evidence_ids")
-LEGACY_METRICS_DROPPED_KEYS = ("contradictions",)
-LEGACY_AGENT_NAMES = {"hypothesis_engine": "claim_builder"}
-# The radar was the only producer of "contested"; such a run is re-read as what
-# the evidence actually showed, which is partial support.
-LEGACY_ANSWER_STATUS = {"contested": "partially_supported"}
-LEGACY_TRACE_DROPPED_AGENTS = ("contradiction_radar",)
-LEGACY_CLAIM_STATUS = {
-    "contested": "weak",
-    "open": "insufficient",
-    "disproved": "refuted",
-}
-
-
-def upgrade_investigation_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    """Return a copy of ``payload`` readable by the current models."""
-    state = dict(payload)
-    for key in LEGACY_DROPPED_KEYS:
-        state.pop(key, None)
-
-    evidence = state.get("evidence")
-    if isinstance(evidence, dict) and isinstance(evidence.get("items"), list):
-        items = []
-        for item in evidence["items"]:
-            if isinstance(item, dict):
-                item = {k: v for k, v in item.items() if k not in LEGACY_ITEM_DROPPED_KEYS}
-            items.append(item)
-        state["evidence"] = {**evidence, "items": items}
-
-    metrics = state.get("metrics")
-    if isinstance(metrics, dict):
-        state["metrics"] = {
-            k: v for k, v in metrics.items() if k not in LEGACY_METRICS_DROPPED_KEYS
-        }
-
-    status = state.get("answer_status")
-    if status in LEGACY_ANSWER_STATUS:
-        state["answer_status"] = LEGACY_ANSWER_STATUS[status]
-
-    trace = state.get("trace")
-    if isinstance(trace, list):
-        state["trace"] = [
-            {**step, "agent": LEGACY_AGENT_NAMES.get(step.get("agent"), step.get("agent"))}
-            for step in trace
-            if isinstance(step, dict) and step.get("agent") not in LEGACY_TRACE_DROPPED_AGENTS
-        ]
-
-    claims = state.get("claims")
-    if isinstance(claims, list):
-        upgraded = []
-        for claim in claims:
-            if isinstance(claim, dict):
-                claim = {k: v for k, v in claim.items() if k not in LEGACY_ITEM_DROPPED_KEYS}
-                status = claim.get("status")
-                if status in LEGACY_CLAIM_STATUS:
-                    claim = {**claim, "status": LEGACY_CLAIM_STATUS[status]}
-            upgraded.append(claim)
-        state["claims"] = upgraded
-
-    return state
-
-
-def investigation_model(row: InvestigationRow) -> InvestigationState:
-    try:
-        return InvestigationState.model_validate(row.state)
-    except ValidationError:
-        upgraded = upgrade_investigation_payload(row.state)
-        state = InvestigationState.model_validate(upgraded)
-        log.info("investigation.upgraded_from_legacy", investigation_id=state.investigation_id)
-        return state
-
-
-def case_values(case: InvestigationCase) -> dict[str, Any]:
-    payload = json_payload(case)
-    return {
-        "case_id": case.case_id,
-        "title": case.title,
-        "question": case.question,
-        "investigation_ids": payload["investigation_ids"],
-        "entity_ids": payload["entity_ids"],
-        "status": case.status.value,
-        "created_at": case.created_at,
-        "updated_at": case.updated_at,
-        "evidence_count": case.evidence_count,
-        "claim_count": case.claim_count,
-        "confidence": case.confidence,
-    }
-
-
-def case_model(row: InvestigationCaseRow) -> InvestigationCase:
-    return InvestigationCase(
-        case_id=row.case_id,
-        title=row.title,
-        question=row.question,
-        investigation_ids=row.investigation_ids,
-        entity_ids=row.entity_ids,
-        status=row.status,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-        evidence_count=row.evidence_count,
-        claim_count=row.claim_count,
-        confidence=row.confidence,
-    )
-
-
-# -- trace ----------------------------------------------------------------
-def trace_values(step: TraceStep) -> dict[str, Any]:
-    payload = json_payload(step)
-    return {
-        "step_id": step.step_id,
-        "investigation_id": step.investigation_id,
-        "sequence": step.sequence,
-        "agent": step.agent.value,
-        "tool": step.tool,
-        "status": step.status.value,
-        "title": step.title,
-        "input_summary": step.input_summary,
-        "output_summary": step.output_summary,
-        "started_at": step.started_at,
-        "completed_at": step.completed_at,
-        "latency_ms": step.latency_ms,
-        "evidence_ids": payload["evidence_ids"],
-        "error": step.error,
-        "metadata_json": payload["metadata"],
-    }
-
-
-def trace_model(row: TraceStepRow) -> TraceStep:
-    return TraceStep(
-        step_id=row.step_id,
-        investigation_id=row.investigation_id,
-        sequence=row.sequence,
-        agent=row.agent,
-        tool=row.tool,
-        status=row.status,
-        title=row.title,
-        input_summary=row.input_summary,
-        output_summary=row.output_summary,
-        started_at=row.started_at,
-        completed_at=row.completed_at,
-        latency_ms=row.latency_ms,
-        evidence_ids=row.evidence_ids,
-        error=row.error,
-        metadata=row.metadata_json,
-    )
-
-
 # -- index versions / audit ----------------------------------------------
 def index_version_values(version: IndexVersion) -> dict[str, Any]:
     return {
@@ -475,15 +299,3 @@ def index_version_model(row: IndexVersionRow) -> IndexVersion:
     )
 
 
-def audit_dict(row: SqlAuditRow) -> dict[str, Any]:
-    return {
-        "audit_id": row.audit_id,
-        "source_id": row.source_id,
-        "sql": row.sql,
-        "params": row.params,
-        "user_id": row.user_id,
-        "rows": row.rows,
-        "ok": row.ok,
-        "error": row.error,
-        "created_at": row.created_at.isoformat(),
-    }

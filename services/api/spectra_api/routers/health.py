@@ -30,7 +30,7 @@ async def health(container: Container) -> HealthReport:
     else:
         components["models"] = {"status": "error", "detail": "model gateway unavailable"}
 
-    for name in ("search", "entities", "evidence", "ingestion", "investigations", "sources"):
+    for name in ("search", "entities", "ingestion", "sources"):
         components[name] = {"status": "ok" if getattr(container, name) is not None else "error"}
 
     unhealthy = [k for k, v in components.items() if isinstance(v, dict) and v.get("status") == "error"]

@@ -12,7 +12,7 @@ export default function NotFound() {
         <LeafHead title="No such division" />
         <EmptyState
           title="This address is not part of the record"
-          body="The page you asked for does not exist in this console. Investigation ids look like inv_ followed by sixteen hex characters; press Ctrl K anywhere to jump to one."
+          body="The page you asked for does not exist in this console. Press Ctrl K anywhere to jump to Search, Sources or Models."
           action={
             <Link href="/" className={linkButtonClasses('secondary', 'md')}>
               Back to the record

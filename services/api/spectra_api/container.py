@@ -28,30 +28,14 @@ class ServiceContainer:
     ingestion: Any = None
     search: Any = None
     entities: Any = None
-    evidence: Any = None
-    investigations: Any = None
-    trace_broker: Any = None
     indexer: Any = None
     degraded: list[str] = field(default_factory=list)
-    agent_overrides: dict[str, bool] = field(default_factory=dict)
     verified_records: dict[str, bool] = field(default_factory=dict)
 
     def note_degraded(self, reason: str) -> None:
         if reason not in self.degraded:
             self.degraded.append(reason)
             log.warning("container.degraded", reason=reason)
-
-    def agent_flags(self) -> dict[str, bool]:
-        """Configured flags with runtime Agent-Control-Center overrides applied."""
-        flags = dict(self.settings.agent_flags())
-        flags.update(self.agent_overrides)
-        return flags
-
-    def set_agent_flag(self, name: str, enabled: bool) -> dict[str, bool]:
-        if name not in self.settings.agent_flags():
-            raise KeyError(name)
-        self.agent_overrides = {**self.agent_overrides, name: enabled}
-        return self.agent_flags()
 
 
 _container: ServiceContainer | None = None
@@ -110,19 +94,6 @@ async def build_container(settings: Settings | None = None) -> ServiceContainer:
     except Exception as exc:
         container.note_degraded(f"search unavailable: {exc}")
 
-    # -- evidence ----------------------------------------------------------
-    try:
-        from spectra_evidence.graph import EvidenceGraph
-        from spectra_evidence.service import EvidenceService
-
-        evidence = EvidenceService(graph=EvidenceGraph(container.storage.graph), settings=settings)
-        # Application links are only emitted for records that genuinely exist.
-        if container.sources is not None:
-            evidence = evidence.with_verifier(_record_verifier(container))
-        container.evidence = evidence
-    except Exception as exc:
-        container.note_degraded(f"evidence service unavailable: {exc}")
-
     # -- ingestion ---------------------------------------------------------
     try:
         from spectra_ingestion import IngestionService
@@ -141,35 +112,6 @@ async def build_container(settings: Settings | None = None) -> ServiceContainer:
         )
     except Exception as exc:
         container.note_degraded(f"ingestion unavailable: {exc}")
-
-    # -- agent / investigations -------------------------------------------
-    # The Brain takes its peers by injection, so we hand it the services this
-    # container already built rather than letting it construct a second set.
-    try:
-        from spectra_agent.context import AgentServices
-        from spectra_agent.service import build_investigation_service
-        from spectra_agent.streaming import TraceBroker
-
-        container.trace_broker = TraceBroker()
-        container.investigations = await build_investigation_service(
-            settings,
-            services=AgentServices(
-                search=container.search,
-                entities=container.entities,
-                evidence=container.evidence,
-                sources=container.sources,
-                storage=container.storage,
-                gateway=container.gateway,
-            ),
-            broker=container.trace_broker,
-            flags_provider=container.agent_flags,
-        )
-        missing = container.investigations._services.missing()  # noqa: SLF001 - startup diagnostics
-        if missing:
-            container.note_degraded(f"agent running without: {', '.join(missing)}")
-    except Exception as exc:
-        container.note_degraded(f"investigation service unavailable: {exc}")
-        log.error("container.agent_failed", error=str(exc), exc_info=True)
 
     await _ensure_builtin_sources(container)
 
@@ -219,20 +161,6 @@ async def _ensure_builtin_sources(container: ServiceContainer) -> None:
         log.info("container.source_registered", source_id=source_id)
 
 
-def _record_verifier(container: ServiceContainer):
-    """Synchronous existence check used before an application deep link is emitted.
-
-    The resolver is sync, so this consults the cache the source service populates
-    rather than blocking on I/O; an unknown record simply yields no link.
-    """
-
-    def verify(entity_type: str, record_id: str) -> bool:
-        cache = container.verified_records
-        return bool(cache.get(f"{entity_type}:{record_id}"))
-
-    return verify
-
-
 def _describe_backends(settings: Settings) -> dict[str, str]:
     return {
         "relational": settings.relational_backend.value,
@@ -259,7 +187,7 @@ async def shutdown_container() -> None:
     async with _lock:
         if _container is None:
             return
-        for name in ("investigations", "ingestion", "sources"):
+        for name in ("ingestion", "sources"):
             service = getattr(_container, name, None)
             close = getattr(service, "close", None)
             if close is not None:

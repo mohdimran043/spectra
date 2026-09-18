@@ -58,11 +58,8 @@ def require(capability: str):
 # defaults because FastAPI forbids `Depends` in both `Annotated` and a default.
 CtxInvestigate = Annotated[PermissionContext, Depends(require("investigate"))]
 CtxUpload = Annotated[PermissionContext, Depends(require("upload"))]
-CtxRunSql = Annotated[PermissionContext, Depends(require("run_sql"))]
 CtxManageSources = Annotated[PermissionContext, Depends(require("manage_sources"))]
-CtxManageAgents = Annotated[PermissionContext, Depends(require("manage_agents"))]
 CtxManageModels = Annotated[PermissionContext, Depends(require("manage_models"))]
-CtxAutopsy = Annotated[PermissionContext, Depends(require("view_autopsy"))]
 
 
 def service_or_503(container: ServiceContainer, name: str):

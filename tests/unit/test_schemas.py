@@ -5,12 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 from spectra_schemas import (
-    ConfidenceLabel,
     DocumentLocator,
-    EvidenceItem,
-    EvidenceKind,
-    EvidenceLedger,
-    EvidenceStance,
     Modality,
     Provenance,
     VideoLocator,
@@ -35,23 +30,6 @@ def _provenance(source: str, kind: str = "document", **kw) -> Provenance:
         object_uri=f"spectra://objects/ab/{'a' * 64}",
         locator=locator,
         **kw,
-    )
-
-
-def _evidence(eid: str, source: str, modality: Modality, kind: EvidenceKind, doc: str = "DOC1") -> EvidenceItem:
-    return EvidenceItem(
-        evidence_id=eid,
-        kind=kind,
-        modality=modality,
-        summary="s",
-        provenance=Provenance(
-            source_id=source,
-            modality=modality,
-            object_uri=f"spectra://objects/ab/{'a' * 64}",
-            locator=DocumentLocator(document_id=doc, page=1),
-        ),
-        relevance=0.8,
-        reliability=0.7,
     )
 
 
@@ -103,69 +81,3 @@ class TestProvenance:
     @pytest.mark.parametrize("seconds,expected", [(0, "00:00:00"), (61, "00:01:01"), (3742, "01:02:22")])
     def test_timestamp_formatting(self, seconds, expected):
         assert format_timestamp(seconds) == expected
-
-
-class TestEvidenceLedger:
-    def test_with_items_returns_a_new_ledger(self):
-        ledger = EvidenceLedger()
-        item = _evidence("e1", "src", Modality.DOCUMENT, EvidenceKind.DOCUMENT)
-        updated = ledger.with_items([item])
-        assert ledger.items == []          # original untouched
-        assert len(updated.items) == 1
-
-    def test_with_items_deduplicates_by_id(self):
-        item = _evidence("e1", "src", Modality.DOCUMENT, EvidenceKind.DOCUMENT)
-        ledger = EvidenceLedger().with_items([item]).with_items([item])
-        assert len(ledger.items) == 1
-
-    def test_diverse_evidence_outranks_one_source(self):
-        """Explicit product requirement: 1 DB + 1 PDF + 1 video beats 3 chunks of one PDF."""
-        same_pdf = EvidenceLedger().with_items(
-            [
-                _evidence("a", "src_docs", Modality.DOCUMENT, EvidenceKind.DOCUMENT, "DOC1"),
-                _evidence("b", "src_docs", Modality.DOCUMENT, EvidenceKind.DOCUMENT, "DOC1"),
-                _evidence("c", "src_docs", Modality.DOCUMENT, EvidenceKind.DOCUMENT, "DOC1"),
-            ]
-        )
-        diverse = EvidenceLedger().with_items(
-            [
-                _evidence("d", "src_db", Modality.DATABASE, EvidenceKind.DATABASE, "R1"),
-                _evidence("e", "src_docs", Modality.DOCUMENT, EvidenceKind.DOCUMENT, "DOC1"),
-                _evidence("f", "src_media", Modality.VIDEO, EvidenceKind.VIDEO, "VID1"),
-            ]
-        )
-        assert diverse.diversity() > same_pdf.diversity()
-
-    def test_empty_ledger_has_zero_diversity(self):
-        assert EvidenceLedger().diversity() == 0.0
-
-    def test_weight_combines_relevance_and_reliability(self):
-        item = _evidence("e", "src", Modality.DOCUMENT, EvidenceKind.DOCUMENT)
-        assert item.weight == pytest.approx(0.8 * 0.7)
-
-    def test_stance_filtering(self):
-        supporting = _evidence("s", "src", Modality.DOCUMENT, EvidenceKind.DOCUMENT).model_copy(
-            update={"stance": EvidenceStance.SUPPORTING}
-        )
-        against = _evidence("c", "src", Modality.DOCUMENT, EvidenceKind.DOCUMENT).model_copy(
-            update={"stance": EvidenceStance.CONTRADICTING}
-        )
-        ledger = EvidenceLedger().with_items([supporting, against])
-        assert [i.evidence_id for i in ledger.by_stance(EvidenceStance.SUPPORTING)] == ["s"]
-        assert [i.evidence_id for i in ledger.by_stance(EvidenceStance.CONTRADICTING)] == ["c"]
-
-
-class TestConfidence:
-    @pytest.mark.parametrize(
-        "score,label",
-        [
-            (0.95, ConfidenceLabel.HIGH),
-            (0.80, ConfidenceLabel.HIGH),
-            (0.60, ConfidenceLabel.MEDIUM),
-            (0.40, ConfidenceLabel.LOW),
-            (0.10, ConfidenceLabel.INSUFFICIENT),
-            (0.0, ConfidenceLabel.INSUFFICIENT),
-        ],
-    )
-    def test_labels_bucket_scores(self, score, label):
-        assert ConfidenceLabel.from_score(score) is label

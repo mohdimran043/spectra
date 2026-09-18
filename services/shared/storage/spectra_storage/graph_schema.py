@@ -16,7 +16,7 @@ NODE_LABEL_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
 EDGE_ID_LENGTH = 20
 
 # The twelve relationship types the evidence graph is specified around
-# (spectra_evidence.graph.EDGE_TYPES) are canonical and MUST all appear below -
+# are canonical and MUST all appear below -
 # omitting one silently breaks entity merging or application linking at write
 # time.  The remaining entries are the wider vocabulary other writers may use.
 EVIDENCE_EDGE_TYPES: frozenset[str] = frozenset(

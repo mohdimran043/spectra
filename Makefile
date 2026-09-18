@@ -41,8 +41,8 @@ endif
 COMPOSE := docker compose $(COMPOSE_FILES)
 
 .PHONY: help install install-ml install-backends up start down restart logs ps \
-        seed-demo ingest reindex demo db-migrate verify state \
-        test lint format benchmark gpu-check model-health \
+        seed-demo ingest reindex db-migrate verify state \
+        test lint format gpu-check model-health \
         version-bump sync-deploy-env package-release package-patch \
         compose-validate audit clean
 
@@ -113,9 +113,6 @@ ingest:  ## Ingest a folder: make ingest SRC=./demo-data
 reindex:  ## Rebuild vector, lexical and graph indexes from the control plane
 	$(SPECTRA) reindex
 
-demo:  ## Reproducible end-to-end demonstration
-	$(SPECTRA) demo
-
 # --- quality ---------------------------------------------------------------
 test:  ## Run the test suite with coverage
 	./scripts/test.sh $(ARGS)
@@ -125,9 +122,6 @@ lint:  ## Check formatting and lint rules
 
 format:  ## Apply formatting and safe lint fixes
 	./scripts/lint.sh --fix
-
-benchmark:  ## Run the evaluation harness
-	$(PY) -m spectra_eval
 
 gpu-check:  ## Report GPU, driver and container-runtime readiness
 	./scripts/gpu-check.sh

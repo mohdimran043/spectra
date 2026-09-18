@@ -1,349 +1,197 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useState, type FormEvent } from 'react';
 
-import { Button, SegmentButton } from '@/components/button';
-import { Mark, StatusChip } from '@/components/chip';
 import { cn } from '@/components/cn';
-import { IconSearch, IconUpload } from '@/components/icons';
-import { Leaf, LeafHead } from '@/components/leaf';
-import { DegradedBand, EmptyState, ErrorState, SkeletonRows } from '@/components/states';
-import { listSources, runImageSearch, runSearch, type SearchScope } from '@/lib/api';
-import { formatLatency } from '@/lib/format';
-import { queryKeys } from '@/lib/query-keys';
-import type { Modality, SearchMode } from '@/lib/schemas/primitives';
-import type { SearchResponse } from '@/lib/schemas/search';
-import { MODALITY_LABEL } from '@/lib/vocab';
-import { DatabasePanel } from './database-panel';
-import { ResultCard } from './result-card';
-import { StageStrip } from './stage-strip';
+import { IconSearch } from '@/components/icons';
+import { ErrorState } from '@/components/states';
+import { runAnswer } from '@/lib/api';
+import type { AnswerResponse } from '@/lib/schemas/search';
 
-interface TabSpec {
-  readonly id: string;
-  readonly label: string;
-  readonly scope: SearchScope | 'database';
-  readonly modality?: Modality;
+import { ResultCard } from './result-card';
+
+/**
+ * The product, on one screen.
+ *
+ * Ask a question; get the passages that answer it, and - when a model can write
+ * one grounded in those passages - a short answer above them. Nothing else.
+ *
+ * The screen has exactly three states and each one says something true: nothing
+ * asked yet, nothing matched, or these results. "Nothing matched" is a real
+ * answer here, not an error: search screens every candidate and returns none
+ * when none of them carry the query's words, its identifiers, or a strong
+ * enough reading from the cross-encoder.
+ */
+export function SearchConsole() {
+  const [query, setQuery] = useState('');
+  const [asked, setAsked] = useState('');
+
+  const search = useMutation({
+    mutationFn: (q: string) => runAnswer(q),
+    onSuccess: (_data, q) => setAsked(q),
+  });
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed || search.isPending) return;
+    search.mutate(trimmed);
+  };
+
+  const data = search.data;
+  const hits = data?.results.hits ?? [];
+  const settled = search.isSuccess && !search.isPending;
+
+  return (
+    <div className="mx-auto w-full max-w-3xl px-5 pb-24">
+      <header className={cn('transition-all duration-300', data ? 'pt-8' : 'pt-[16vh]')}>
+        {!data && (
+          <h1 className="mb-6 text-balance text-2xl font-semibold tracking-[-0.02em] text-ink">
+            Search everything you have indexed.
+          </h1>
+        )}
+
+        <form onSubmit={submit} role="search">
+          <label htmlFor="q" className="sr-only">
+            Search query
+          </label>
+          <div
+            className={cn(
+              'flex items-center gap-3 border border-rule-strong bg-leaf-raised px-4',
+              'shadow-leaf transition-shadow focus-within:border-focus',
+              'focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--focus)_18%,transparent)]',
+            )}
+          >
+            <IconSearch size={17} className="shrink-0 text-ink-3" aria-hidden="true" />
+            <input
+              id="q"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Ask a question, or type what you are looking for"
+              autoComplete="off"
+              className={cn(
+                'min-w-0 flex-1 bg-transparent py-3.5 text-body text-ink',
+                'placeholder:text-ink-3 focus:outline-none',
+              )}
+            />
+            <button
+              type="submit"
+              disabled={!query.trim() || search.isPending}
+              className={cn(
+                'shrink-0 py-1.5 text-mark font-semibold uppercase tracking-[0.06em]',
+                'text-focus transition-opacity hover:opacity-70',
+                'disabled:cursor-not-allowed disabled:text-ink-3 disabled:hover:opacity-100',
+                'focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus',
+              )}
+            >
+              {search.isPending ? 'Searching' : 'Search'}
+            </button>
+          </div>
+        </form>
+
+        {!data && !search.isError && (
+          <p className="mt-3 max-w-[60ch] text-mark text-ink-2">
+            Documents, images, video, audio and records are searched together. If nothing in the
+            index matches, you will be told so rather than shown the nearest thing.
+          </p>
+        )}
+      </header>
+
+      {search.isPending && <Searching />}
+
+      {search.isError && (
+        <div className="mt-8">
+          <ErrorState error={search.error} onRetry={() => search.mutate(asked || query)} />
+        </div>
+      )}
+
+      {settled && data && (
+        <section className="mt-8" aria-live="polite">
+          {hits.length === 0 ? (
+            <NothingMatched query={asked} screened={data.results.total_candidates} />
+          ) : (
+            <>
+              {data.answer && <AnswerPanel answer={data} />}
+              <ResultSummary
+                count={hits.length}
+                screened={data.results.total_candidates}
+                ms={data.results.latency_ms}
+              />
+              <ol className="mt-1">
+                {hits.map((hit, index) => (
+                  <ResultCard key={hit.chunk_id} hit={hit} rank={index + 1} />
+                ))}
+              </ol>
+            </>
+          )}
+        </section>
+      )}
+    </div>
+  );
 }
 
-const TABS: readonly TabSpec[] = [
-  { id: 'unified', label: 'Unified', scope: 'unified' },
-  { id: 'documents', label: 'Documents', scope: 'document', modality: 'document' },
-  { id: 'images', label: 'Images', scope: 'image', modality: 'image' },
-  { id: 'videos', label: 'Videos', scope: 'video', modality: 'video' },
-  { id: 'audio', label: 'Audio', scope: 'audio', modality: 'audio' },
-  { id: 'database', label: 'Database', scope: 'database' },
-];
+/** A short answer, and the numbers of the results it was written from. */
+function AnswerPanel({ answer }: { answer: AnswerResponse }) {
+  return (
+    <div className="mb-8 border-l border-focus bg-leaf-raised py-3.5 pl-4 pr-4">
+      <p className="max-w-[68ch] text-prose text-ink">{answer.answer}</p>
+      {answer.citations.length > 0 && (
+        <p className="mt-2 text-micro text-ink-2">
+          Written from {answer.citations.length === 1 ? 'result' : 'results'}{' '}
+          <span className="font-mono tabular text-ink-1">{answer.citations.join(', ')}</span> below.
+          Check them.
+        </p>
+      )}
+    </div>
+  );
+}
 
-const DEFAULT_TOP_K = 20;
-
-function emptyFilters() {
-  return {
-    source_ids: [] as string[],
-    modalities: [] as Modality[],
-    asset_ids: [] as string[],
-    entity_ids: [] as string[],
-    occurred_after: null,
-    occurred_before: null,
-    media_types: [] as string[],
-  };
+function ResultSummary({ count, screened, ms }: { count: number; screened: number; ms: number }) {
+  return (
+    <p className="border-b border-rule pb-2 text-micro text-ink-2">
+      <span className="font-mono tabular text-ink-1">{count}</span>{' '}
+      {count === 1 ? 'result' : 'results'} from{' '}
+      <span className="font-mono tabular">{screened.toLocaleString()}</span> candidates screened in{' '}
+      <span className="font-mono tabular">{(ms / 1000).toFixed(2)}s</span>
+    </p>
+  );
 }
 
 /**
- * The search console. Tabs are retrieval scopes, not view filters: each one
- * calls its own endpoint, so "Videos" is a video search rather than a
- * client-side subset of a unified one.
+ * Not an error. The index was searched in full and nothing in it qualified,
+ * which is the honest outcome for a term the corpus does not contain.
  */
-export function SearchConsole() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const fileInput = useRef<HTMLInputElement>(null);
-
-  const initialTab = params.get('tab') ?? 'unified';
-  const [tabId, setTabId] = useState(TABS.some((tab) => tab.id === initialTab) ? initialTab : 'unified');
-  const [query, setQuery] = useState(params.get('q') ?? '');
-  const [mode, setMode] = useState<SearchMode>('fast');
-  const [rerank, setRerank] = useState(true);
-  const [sourceId, setSourceId] = useState('');
-  const [response, setResponse] = useState<SearchResponse | null>(null);
-  const assetParam = params.get('asset');
-
-  const activeTab = TABS.find((tab) => tab.id === tabId) ?? TABS[0]!;
-
-  const sources = useQuery({
-    queryKey: queryKeys.sources,
-    queryFn: ({ signal }) => listSources(signal),
-  });
-
-  const search = useMutation({
-    mutationFn: ({ imageAssetId }: { imageAssetId?: string } = {}) => {
-      if (activeTab.scope === 'database') throw new Error('unreachable');
-      return runSearch(activeTab.scope, {
-        query,
-        mode,
-        top_k: DEFAULT_TOP_K,
-        rerank,
-        include_text: false,
-        image_asset_id: imageAssetId ?? null,
-        filters: {
-          ...emptyFilters(),
-          source_ids: sourceId ? [sourceId] : [],
-          modalities: activeTab.modality ? [activeTab.modality] : [],
-          asset_ids: [],
-        },
-      });
-    },
-    onSuccess: setResponse,
-  });
-
-  const imageSearch = useMutation({
-    mutationFn: (file: File) => runImageSearch(file),
-    onSuccess: setResponse,
-  });
-
-  const runQuery = useCallback(
-    (imageAssetId?: string) => {
-      if (activeTab.scope === 'database') return;
-      if (!query.trim() && !imageAssetId) return;
-      search.mutate({ imageAssetId });
-    },
-    [activeTab.scope, query, search],
-  );
-
-  /** An asset id arriving from an upload runs an image-to-everything search. */
-  const startedForAsset = useRef<string | null>(null);
-  useEffect(() => {
-    if (!assetParam || startedForAsset.current === assetParam) return;
-    startedForAsset.current = assetParam;
-    setTabId('images');
-    search.mutate({ imageAssetId: assetParam });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assetParam]);
-
-  const syncUrl = (nextTab: string, nextQuery: string) => {
-    const next = new URLSearchParams();
-    if (nextQuery.trim()) next.set('q', nextQuery.trim());
-    if (nextTab !== 'unified') next.set('tab', nextTab);
-    router.replace(next.toString() ? `/search?${next}` : '/search', { scroll: false });
-  };
-
-  const pending = search.isPending || imageSearch.isPending;
-  const error = search.error ?? imageSearch.error;
-  const understanding = response?.understanding;
-
-  const hits = useMemo(() => response?.hits ?? [], [response]);
-
+function NothingMatched({ query, screened }: { query: string; screened: number }) {
   return (
-    <div className="flex flex-col gap-3">
-      <Leaf>
-        <div
-          role="tablist"
-          aria-label="Retrieval scope"
-          className="flex flex-wrap items-stretch border-b border-rule"
-        >
-          {TABS.map((tab) => {
-            const selected = tab.id === tabId;
-            return (
-              <button
-                key={tab.id}
-                role="tab"
-                type="button"
-                aria-selected={selected}
-                onClick={() => {
-                  setTabId(tab.id);
-                  setResponse(null);
-                  syncUrl(tab.id, query);
-                }}
-                className={cn(
-                  'relative px-3 py-2 text-mark transition-colors duration-100 ease-step',
-                  selected
-                    ? 'bg-board font-semibold text-ink after:absolute after:inset-x-0 after:bottom-[-1px] after:h-0.5 after:bg-ink'
-                    : 'text-ink-1 hover:bg-board-sunk hover:text-ink',
-                )}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+    <div className="border border-rule bg-leaf-raised px-5 py-10 text-center">
+      <p className="text-body font-semibold text-ink">Nothing matched &ldquo;{query}&rdquo;.</p>
+      <p className="mx-auto mt-2 max-w-[52ch] text-mark text-ink-2">
+        All <span className="font-mono tabular">{screened.toLocaleString()}</span> candidates were
+        screened and none carry this term, a matching identifier, or a close enough reading to be
+        worth showing. Try different words, or check Sources for what is indexed.
+      </p>
+    </div>
+  );
+}
+
+function Searching() {
+  return (
+    <div className="mt-8" aria-live="polite">
+      <p className="sr-only">Searching</p>
+      <div className="border-b border-rule pb-2">
+        <span className="block h-2 w-40 animate-pulse bg-board-sunk" />
+      </div>
+      {[0, 1, 2, 3].map((row) => (
+        <div key={row} className="flex gap-4 border-b border-rule px-2 py-4">
+          <span className="mt-px h-3 w-5 shrink-0 animate-pulse bg-board-sunk" />
+          <span className="flex-1 space-y-2">
+            <span className="block h-2.5 w-28 animate-pulse bg-board-sunk" />
+            <span className="block h-3 w-full animate-pulse bg-board-sunk" />
+            <span className="block h-3 w-4/5 animate-pulse bg-board-sunk" />
+          </span>
         </div>
-
-        {activeTab.scope !== 'database' && (
-          <div className="flex flex-col gap-2 p-3">
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="min-w-[16rem] flex-1">
-                <label htmlFor="search-query" className="sr-only">
-                  Search query
-                </label>
-                <input
-                  id="search-query"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      syncUrl(tabId, query);
-                      runQuery();
-                    }
-                  }}
-                  placeholder={`Search ${activeTab.label.toLowerCase()}…`}
-                  className="h-9 w-full rounded-sm border border-rule-strong bg-leaf px-2.5 text-prose text-ink placeholder:text-ink-2"
-                />
-              </div>
-              <div className="flex items-center gap-1.5" role="group" aria-label="Retrieval depth">
-                <SegmentButton selected={mode === 'fast'} onClick={() => setMode('fast')}>
-                  Fast
-                </SegmentButton>
-                <SegmentButton selected={mode === 'deep'} onClick={() => setMode('deep')}>
-                  Deep
-                </SegmentButton>
-              </div>
-              <SegmentButton selected={rerank} onClick={() => setRerank((value) => !value)}>
-                Rerank
-              </SegmentButton>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => {
-                  syncUrl(tabId, query);
-                  runQuery();
-                }}
-                disabled={pending || !query.trim()}
-              >
-                <IconSearch size={13} />
-                {pending ? 'Searching…' : 'Search'}
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <label htmlFor="search-source" className="text-micro uppercase tracking-[0.08em] text-ink-2">
-                Source
-              </label>
-              <select
-                id="search-source"
-                value={sourceId}
-                onChange={(event) => setSourceId(event.target.value)}
-                className="h-6 rounded-sm border border-rule-strong bg-leaf px-1.5 text-mark text-ink"
-              >
-                <option value="">All permitted sources</option>
-                {(sources.data ?? []).map((source) => (
-                  <option key={source.source_id} value={source.source_id}>
-                    {source.name}
-                  </option>
-                ))}
-              </select>
-
-              {activeTab.id === 'images' && (
-                <>
-                  <Button size="sm" variant="secondary" onClick={() => fileInput.current?.click()}>
-                    <IconUpload size={11} />
-                    Search by image
-                  </Button>
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    aria-label="Search by image file"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) imageSearch.mutate(file);
-                      event.target.value = '';
-                    }}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </Leaf>
-
-      {activeTab.scope === 'database' ? (
-        <DatabasePanel />
-      ) : (
-        <>
-          {error && (
-            <ErrorState error={error} context="Search" onRetry={() => runQuery()} />
-          )}
-
-          {pending && (
-            <Leaf>
-              <LeafHead title="Retrieving" />
-              <SkeletonRows rows={5} />
-            </Leaf>
-          )}
-
-          {!pending && response && (
-            <>
-              {response.degraded && <DegradedBand reasons={response.degraded_reasons} />}
-
-              {understanding && (
-                <Leaf>
-                  <LeafHead title="Image understanding" hint="What the vision path read before searching" />
-                  <div className="flex flex-col gap-2 p-3">
-                    {understanding.caption && (
-                      <p className="text-body text-ink">
-                        <span className="text-ink-2">Caption </span>
-                        {understanding.caption}
-                      </p>
-                    )}
-                    {understanding.ocr_text && (
-                      <p className="whitespace-pre-wrap font-mono text-mark text-ink-1">
-                        {understanding.ocr_text}
-                      </p>
-                    )}
-                    {understanding.detected_entities.length > 0 && (
-                      <p className="text-mark text-ink-2">
-                        {understanding.detected_entities.length} entities detected
-                      </p>
-                    )}
-                  </div>
-                </Leaf>
-              )}
-
-              <StageStrip response={response} />
-
-              <Leaf>
-                <LeafHead
-                  title="Results"
-                  count={hits.length}
-                  actions={
-                    <>
-                      <Mark mono>{response.total_candidates} candidates</Mark>
-                      <Mark mono>{formatLatency(response.latency_ms)}</Mark>
-                      <StatusChip tone="quiet">{response.mode}</StatusChip>
-                    </>
-                  }
-                />
-                {hits.length === 0 ? (
-                  <EmptyState
-                    title="Nothing matched"
-                    body={`${response.total_candidates} candidates were generated and none survived ranking. Widen the source filter, switch to Deep mode, or check that the relevant source has finished indexing.`}
-                  />
-                ) : (
-                  <div>
-                    {hits.map((hit) => (
-                      <ResultCard key={hit.chunk_id} hit={hit} />
-                    ))}
-                  </div>
-                )}
-              </Leaf>
-            </>
-          )}
-
-          {!pending && !response && !error && (
-            <Leaf>
-              <EmptyState
-                title={`${MODALITY_LABEL[activeTab.modality ?? 'external']} search is ready`}
-                body={
-                  activeTab.id === 'unified'
-                    ? 'Ask across every permitted source at once. Matches come back marked, scored and openable at their exact page, frame, segment or row.'
-                    : `Scoped to ${activeTab.label.toLowerCase()}. The same ranking signals apply; only the candidate pool changes.`
-                }
-              />
-            </Leaf>
-          )}
-        </>
-      )}
+      ))}
     </div>
   );
 }

@@ -3,7 +3,7 @@
     "relational": "sqlite",
     "vector": "embedded"
   },
-  "checked_at": "2026-09-18T10:40:41.456956Z",
+  "checked_at": "2026-09-18T11:41:21.481103Z",
   "components": {
     "models": {
       "detail": "no GPU",

@@ -184,61 +184,6 @@ class IngestJobRow(Base):
     stages_completed: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
 
 
-class InvestigationRow(Base):
-    """Indexed header columns plus the complete serialised ``InvestigationState``."""
-
-    __tablename__ = "investigations"
-
-    investigation_id: Mapped[str] = mapped_column(String(ID_LENGTH), primary_key=True)
-    case_id: Mapped[str | None] = mapped_column(String(ID_LENGTH), nullable=True, index=True)
-    goal: Mapped[str] = mapped_column(Text, nullable=False)
-    mode: Mapped[str] = mapped_column(String(SHORT_LENGTH), default="deep", nullable=False)
-    status: Mapped[str] = mapped_column(String(SHORT_LENGTH), default="created", nullable=False, index=True)
-    answer_status: Mapped[str] = mapped_column(String(SHORT_LENGTH), default="insufficient_evidence", nullable=False)
-    confidence: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    user_id: Mapped[str | None] = mapped_column(String(ID_LENGTH), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
-    state: Mapped[dict] = mapped_column(JSON, nullable=False)
-
-
-class InvestigationCaseRow(Base):
-    __tablename__ = "investigation_cases"
-
-    case_id: Mapped[str] = mapped_column(String(ID_LENGTH), primary_key=True)
-    title: Mapped[str] = mapped_column(String(NAME_LENGTH), nullable=False)
-    question: Mapped[str] = mapped_column(Text, nullable=False)
-    investigation_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
-    entity_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
-    status: Mapped[str] = mapped_column(String(SHORT_LENGTH), default="created", nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
-    evidence_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    claim_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    confidence: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-
-
-class TraceStepRow(Base):
-    __tablename__ = "trace_steps"
-    __table_args__ = (Index("trace_steps_investigation_sequence", "investigation_id", "sequence"),)
-
-    step_id: Mapped[str] = mapped_column(String(ID_LENGTH), primary_key=True)
-    investigation_id: Mapped[str] = mapped_column(String(ID_LENGTH), nullable=False, index=True)
-    sequence: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    agent: Mapped[str] = mapped_column(String(SHORT_LENGTH), nullable=False)
-    tool: Mapped[str | None] = mapped_column(String(NAME_LENGTH), nullable=True)
-    status: Mapped[str] = mapped_column(String(SHORT_LENGTH), default="started", nullable=False)
-    title: Mapped[str] = mapped_column(String(NAME_LENGTH), default="", nullable=False)
-    input_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    output_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
-    started_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
-    completed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
-    latency_ms: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
-    evidence_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
-    error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-
-
 class IndexVersionRow(Base):
     __tablename__ = "index_versions"
 
@@ -252,17 +197,3 @@ class IndexVersionRow(Base):
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
 
 
-class SqlAuditRow(Base):
-    """Every generated SQL statement, kept for the audit trail and the autopsy view."""
-
-    __tablename__ = "sql_audit"
-
-    audit_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    source_id: Mapped[str] = mapped_column(String(ID_LENGTH), nullable=False, index=True)
-    sql: Mapped[str] = mapped_column(Text, nullable=False)
-    params: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-    user_id: Mapped[str] = mapped_column(String(ID_LENGTH), nullable=False, index=True)
-    rows: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    ok: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)

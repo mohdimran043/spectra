@@ -96,7 +96,7 @@ export function CommandPalette({
             if (event.key === 'Enter' && entries[0]) go(entries[0].href);
           }}
           placeholder="Search · inv_… · 200"
-          aria-label="Jump to division or investigation"
+          aria-label="Jump to a page"
           className="h-8 w-full rounded-sm border border-rule-strong bg-leaf px-2 text-body text-ink placeholder:text-ink-2"
         />
       </div>

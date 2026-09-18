@@ -95,10 +95,8 @@ where = [
   "packages/tool_contracts",
   # --- Pipeline A: ingestion / indexing (write path) ---
   "services/ingest/ingestion",
-  # --- Pipeline B: search / investigation (read path) ---
+  # --- Pipeline B: search (read path) ---
   "services/query/search",
-  "services/query/evidence",
-  "services/query/agent",
   # --- shared by both pipelines ---
   "services/shared/ai_core",
   "services/shared/storage",
@@ -107,7 +105,6 @@ where = [
   # --- process entry points ---
   "services/api",
   "services/worker",
-  "evaluation",
 ]
 
 [tool.pytest.ini_options]

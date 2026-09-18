@@ -20,10 +20,7 @@ from spectra_schemas import (
     EntityLink,
     IndexVersion,
     IngestJob,
-    InvestigationCase,
-    InvestigationState,
     SourceDescriptor,
-    TraceStep,
 )
 
 
@@ -133,32 +130,6 @@ class Repository(ABC):
     @abstractmethod
     async def list_jobs(self, limit: int = 50) -> list[IngestJob]: ...
 
-    # -- investigations ---------------------------------------------------
-    @abstractmethod
-    async def save_investigation(self, state: InvestigationState) -> None: ...
-
-    @abstractmethod
-    async def get_investigation(self, investigation_id: str) -> InvestigationState | None: ...
-
-    @abstractmethod
-    async def list_investigations(self, limit: int = 50) -> list[InvestigationState]: ...
-
-    @abstractmethod
-    async def save_case(self, case: InvestigationCase) -> None: ...
-
-    @abstractmethod
-    async def get_case(self, case_id: str) -> InvestigationCase | None: ...
-
-    @abstractmethod
-    async def list_cases(self, limit: int = 50) -> list[InvestigationCase]: ...
-
-    # -- trace ------------------------------------------------------------
-    @abstractmethod
-    async def append_trace(self, step: TraceStep) -> None: ...
-
-    @abstractmethod
-    async def get_trace(self, investigation_id: str) -> list[TraceStep]: ...
-
     # -- index versioning -------------------------------------------------
     @abstractmethod
     async def record_index_version(self, version: IndexVersion) -> None: ...
@@ -170,14 +141,5 @@ class Repository(ABC):
     async def list_index_versions(self) -> list[IndexVersion]: ...
 
     # -- audit ------------------------------------------------------------
-    @abstractmethod
-    async def record_sql_audit(
-        self, source_id: str, sql: str, params: dict[str, Any], user_id: str, rows: int, ok: bool, error: str | None
-    ) -> None: ...
-
-    @abstractmethod
-    async def list_sql_audit(self, limit: int = 100) -> list[dict[str, Any]]: ...
-
-    # -- stats ------------------------------------------------------------
     @abstractmethod
     async def stats(self) -> dict[str, int]: ...

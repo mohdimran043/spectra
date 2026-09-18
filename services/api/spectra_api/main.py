@@ -13,33 +13,14 @@ from .background import drain
 from .container import build_container, shutdown_container
 from .errors import register_error_handlers
 from .middleware import CorrelationMiddleware
-from .routers import (
-    agents,
-    assets,
-    cases,
-    database,
-    demo,
-    entities,
-    evaluation,
-    evidence,
-    graph,
-    health,
-    investigations,
-    models,
-    search,
-    sources,
-    stream,
-    uploads,
-)
+from .routers import answer, assets, health, models, search, sources, uploads
 
 log = get_logger(__name__)
 
 API_TITLE = "SPECTRA"
 API_DESCRIPTION = (
-    "Evidence-grounded multimodal enterprise investigation agent. "
-    "Resolves entities across documents, images, audio, video and structured databases; "
-    "states only what the evidence supports and actively searches for evidence against it; "
-    "searches for evidence that would refute them; and returns every claim with its provenance."
+    "Multimodal search over documents, images, audio, video and structured records. "
+    "Every result carries its provenance, and a query with nothing to match returns nothing."
 )
 API_VERSION = "1.0.0"
 
@@ -88,20 +69,11 @@ def create_app() -> FastAPI:
     for router in (
         health.router,
         search.router,
-        database.router,
+        answer.router,
         uploads.router,
         assets.router,
-        investigations.router,
-        stream.router,
-        cases.router,
-        entities.router,
-        evidence.router,
-        graph.router,
         sources.router,
         models.router,
-        agents.router,
-        demo.router,
-        evaluation.router,
     ):
         app.include_router(router, prefix="/api")
 

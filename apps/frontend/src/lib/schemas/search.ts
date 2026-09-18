@@ -7,7 +7,6 @@ import {
   scoreBreakdownSchema,
   searchModeSchema,
 } from './primitives';
-import { applicationLinkSchema } from './evidence';
 
 export const searchFiltersSchema = z.object({
   source_ids: z.array(z.string()).default([]),
@@ -107,6 +106,23 @@ export const databaseQueryResponseSchema = z.object({
   row_count: z.number().default(0),
   truncated: z.boolean().default(false),
   latency_ms: z.number().default(0),
-  application_links: z.array(applicationLinkSchema).default([]),
 });
 export type DatabaseQueryResponse = z.infer<typeof databaseQueryResponseSchema>;
+
+/**
+ * `POST /api/answer`: the results, plus a short answer written only from them.
+ *
+ * `answer` is empty whenever nothing could honestly be said - no results, no
+ * generative runtime, or a generated answer that cited nothing retrieved. The
+ * results stand on their own in every case, so the UI renders them either way.
+ */
+export const answerResponseSchema = z.object({
+  query: z.string(),
+  answer: z.string().default(''),
+  citations: z.array(z.number()).default([]),
+  model: z.string().default(''),
+  degraded: z.boolean().default(false),
+  degraded_reason: z.string().nullish(),
+  results: searchResponseSchema,
+});
+export type AnswerResponse = z.infer<typeof answerResponseSchema>;

@@ -56,7 +56,7 @@ export function StatusHeader({ onOpenPalette }: { onOpenPalette: () => void }) {
         )}
       >
         <IconSearch size={12} />
-        <span>Jump to division or investigation</span>
+        <span>Jump to a page</span>
         <kbd className="ml-2 rounded-sm border border-rule px-1 font-mono text-micro tabular text-ink-2">
           Ctrl K
         </kbd>

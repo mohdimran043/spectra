@@ -84,22 +84,15 @@ class TestErrorEnvelope:
 
     def test_unknown_role_is_rejected(self, client):
         """`/api/health` takes no permission context, so probe a route that does."""
-        response = client.get("/api/agents/status", headers={"X-Spectra-Role": "superuser"})
+        response = client.post(
+            "/api/search", json={"query": "x"}, headers={"X-Spectra-Role": "superuser"}
+        )
         assert response.status_code == 403
         assert response.json()["error"] == "permission_denied"
         assert "superuser" in response.json()["reason"]
 
 
 class TestPermissions:
-    def test_viewer_may_not_run_sql(self, client):
-        response = client.post(
-            "/api/database/query",
-            json={"source_id": "src_x", "question": "anything"},
-            headers={"X-Spectra-Role": "viewer"},
-        )
-        assert response.status_code == 403
-        assert "may not run_sql" in response.json()["reason"]
-
     def test_analyst_may_not_manage_sources(self, client):
         response = client.post(
             "/api/sources",
@@ -132,38 +125,6 @@ class TestSourceSecrets:
         assert response.status_code == 400
         assert response.json()["error"] == "validation_rejected"
         assert "password" in response.json()["reason"]
-
-
-class TestAgentControlCenter:
-    def test_status_lists_every_agent_with_alternatives(self, client):
-        agents = client.get("/api/agents/status").json()
-        names = {a["name"] for a in agents}
-        assert {"document", "image", "video", "audio", "database", "graph",
-                "entity_resolution", "claim", "disproof", "verifier"} <= names
-        for agent in agents:
-            assert agent["alternatives"], f"{agent['name']} must offer alternatives"
-
-    def test_toggling_requires_admin(self, client):
-        assert client.patch(
-            "/api/agents/image", json={"enabled": False}, headers={"X-Spectra-Role": "analyst"}
-        ).status_code == 403
-
-    def test_admin_can_disable_and_reenable_an_agent(self, client):
-        admin = {"X-Spectra-Role": "admin"}
-        assert client.patch("/api/agents/image", json={"enabled": False}, headers=admin).status_code == 200
-        disabled = next(a for a in client.get("/api/agents/status").json() if a["name"] == "image")
-        assert disabled["enabled"] is False
-        assert disabled["state"] == "disabled"
-        assert disabled["reason"]
-        assert disabled["alternatives"]
-
-        client.patch("/api/agents/image", json={"enabled": True}, headers=admin)
-        assert next(a for a in client.get("/api/agents/status").json() if a["name"] == "image")["enabled"]
-
-    def test_unknown_agent_is_404(self, client):
-        assert client.patch(
-            "/api/agents/telepathy", json={"enabled": False}, headers={"X-Spectra-Role": "admin"}
-        ).status_code == 404
 
 
 class TestModelsDashboard:
@@ -201,22 +162,6 @@ class TestMetrics:
         assert "spectra_" in response.text
 
 
-class TestDemoScenarios:
-    def test_six_scenarios_are_published(self, client):
-        scenarios = client.get("/api/demo/scenarios").json()
-        assert len(scenarios) == 6
-        ids = {s["id"] for s in scenarios}
-        assert {"image-to-database", "text-to-video", "database-to-documents",
-                "investigation", "abstention", "timeline"} == ids
-
-    def test_each_scenario_has_a_narrative_and_a_question(self, client):
-        for scenario in client.get("/api/demo/scenarios").json():
-            assert scenario["narrative"] and scenario["question"] and scenario["expects"]
-
-    def test_unknown_scenario_is_404(self, client):
-        assert client.post("/api/demo/run/nope", headers={"X-Spectra-Role": "admin"}).status_code == 404
-
-
 class TestOpenAPI:
     def test_schema_generates(self, client):
         schema = client.get("/openapi.json").json()
@@ -225,8 +170,7 @@ class TestOpenAPI:
     def test_documented_routes_exist(self, client):
         paths = client.get("/openapi.json").json()["paths"]
         for route in (
-            "/api/health", "/api/metrics", "/api/search", "/api/uploads",
-            "/api/investigations", "/api/database/query", "/api/sources",
-            "/api/models", "/api/agents/status", "/api/stream/investigation/{investigation_id}",
+            "/api/health", "/api/metrics", "/api/search", "/api/answer",
+            "/api/uploads", "/api/sources", "/api/models", "/api/assets",
         ):
             assert route in paths, route

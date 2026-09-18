@@ -9,7 +9,6 @@ two ingest workers cannot race each other into a duplicate-key failure.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Sequence
-from datetime import datetime, timezone
 from typing import Any
 
 from spectra_config import Settings
@@ -21,10 +20,7 @@ from spectra_schemas import (
     EntityLink,
     IndexVersion,
     IngestJob,
-    InvestigationCase,
-    InvestigationState,
     SourceDescriptor,
-    TraceStep,
 )
 from sqlalchemy import Select, delete, event, func, select
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
@@ -43,11 +39,7 @@ from .models import (
     EntityRow,
     IndexVersionRow,
     IngestJobRow,
-    InvestigationCaseRow,
-    InvestigationRow,
     SourceRow,
-    SqlAuditRow,
-    TraceStepRow,
 )
 from .repository import Repository
 
@@ -65,11 +57,7 @@ STATS_TABLES: dict[str, type[Base]] = {
     "entities": EntityRow,
     "entity_links": EntityLinkRow,
     "ingest_jobs": IngestJobRow,
-    "investigations": InvestigationRow,
-    "investigation_cases": InvestigationCaseRow,
-    "trace_steps": TraceStepRow,
     "index_versions": IndexVersionRow,
-    "sql_audit": SqlAuditRow,
 }
 
 
@@ -338,56 +326,6 @@ class SqlRepository(Repository):
         statement = select(IngestJobRow).order_by(IngestJobRow.updated_at.desc(), IngestJobRow.job_id).limit(limit)
         return [mappers.job_model(row) for row in await self._scalars(statement)]
 
-    # -- investigations ---------------------------------------------------
-    async def save_investigation(self, state: InvestigationState) -> None:
-        async with self._sessions() as session, session.begin():
-            await self._upsert(
-                session, InvestigationRow, [mappers.investigation_values(state)], ["investigation_id"]
-            )
-
-    async def get_investigation(self, investigation_id: str) -> InvestigationState | None:
-        row = await self._first(
-            select(InvestigationRow).where(InvestigationRow.investigation_id == investigation_id)
-        )
-        return mappers.investigation_model(row) if row is not None else None
-
-    async def list_investigations(self, limit: int = 50) -> list[InvestigationState]:
-        statement = (
-            select(InvestigationRow)
-            .order_by(InvestigationRow.updated_at.desc(), InvestigationRow.investigation_id)
-            .limit(limit)
-        )
-        return [mappers.investigation_model(row) for row in await self._scalars(statement)]
-
-    async def save_case(self, case: InvestigationCase) -> None:
-        async with self._sessions() as session, session.begin():
-            await self._upsert(session, InvestigationCaseRow, [mappers.case_values(case)], ["case_id"])
-
-    async def get_case(self, case_id: str) -> InvestigationCase | None:
-        row = await self._first(select(InvestigationCaseRow).where(InvestigationCaseRow.case_id == case_id))
-        return mappers.case_model(row) if row is not None else None
-
-    async def list_cases(self, limit: int = 50) -> list[InvestigationCase]:
-        statement = (
-            select(InvestigationCaseRow)
-            .order_by(InvestigationCaseRow.updated_at.desc(), InvestigationCaseRow.case_id)
-            .limit(limit)
-        )
-        return [mappers.case_model(row) for row in await self._scalars(statement)]
-
-    # -- trace ------------------------------------------------------------
-    async def append_trace(self, step: TraceStep) -> None:
-        async with self._sessions() as session, session.begin():
-            await self._upsert(session, TraceStepRow, [mappers.trace_values(step)], ["step_id"])
-
-    async def get_trace(self, investigation_id: str) -> list[TraceStep]:
-        statement = (
-            select(TraceStepRow)
-            .where(TraceStepRow.investigation_id == investigation_id)
-            .order_by(TraceStepRow.sequence, TraceStepRow.started_at)
-        )
-        return [mappers.trace_model(row) for row in await self._scalars(statement)]
-
     # -- index versioning -------------------------------------------------
     async def record_index_version(self, version: IndexVersion) -> None:
         async with self._sessions() as session, session.begin():
@@ -409,27 +347,6 @@ class SqlRepository(Repository):
         return [mappers.index_version_model(row) for row in await self._scalars(statement)]
 
     # -- audit ------------------------------------------------------------
-    async def record_sql_audit(
-        self, source_id: str, sql: str, params: dict[str, Any], user_id: str, rows: int, ok: bool, error: str | None
-    ) -> None:
-        record = SqlAuditRow(
-            source_id=source_id,
-            sql=sql,
-            params=_jsonable(params),
-            user_id=user_id,
-            rows=rows,
-            ok=ok,
-            error=error,
-            created_at=datetime.now(timezone.utc),
-        )
-        async with self._sessions() as session, session.begin():
-            session.add(record)
-
-    async def list_sql_audit(self, limit: int = 100) -> list[dict[str, Any]]:
-        statement = select(SqlAuditRow).order_by(SqlAuditRow.created_at.desc(), SqlAuditRow.audit_id.desc()).limit(limit)
-        return [mappers.audit_dict(row) for row in await self._scalars(statement)]
-
-    # -- stats ------------------------------------------------------------
     async def stats(self) -> dict[str, int]:
         totals: dict[str, int] = {}
         async with self._sessions() as session:

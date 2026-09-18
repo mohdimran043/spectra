@@ -20,22 +20,8 @@ import {
   searchResponseSchema,
   type DatabaseQueryRequest,
   type SearchRequest,
+  answerResponseSchema,
 } from './schemas/search';
-import {
-  createInvestigationResponseSchema,
-  investigationAnswerSchema,
-  investigationCaseSchema,
-  investigationSummarySchema,
-  searchAutopsySchema,
-  traceStepSchema,
-} from './schemas/investigation';
-import {
-  entityDetailSchema,
-  entityResolutionSchema,
-  evidenceItemSchema,
-  graphViewSchema,
-  canonicalEntitySchema,
-} from './schemas/evidence';
 import { z as zod } from 'zod';
 
 const JSON_CONTENT_TYPE = 'application/json';
@@ -206,6 +192,13 @@ const SEARCH_PATHS: Record<SearchScope, string> = {
   audio: '/api/search/audio',
 };
 
+export const runAnswer = (query: string, signal?: AbortSignal) =>
+  apiRequest('/api/answer', answerResponseSchema, {
+    method: 'POST',
+    body: { query, mode: 'fast', top_k: 8 },
+    signal,
+  });
+
 export const runSearch = (
   scope: SearchScope,
   request: SearchRequest,
@@ -226,17 +219,6 @@ export const runImageSearch = (file: File, signal?: AbortSignal) => {
     signal,
   });
 };
-
-export const runDatabaseQuery = (request: DatabaseQueryRequest, signal?: AbortSignal) =>
-  apiRequest('/api/database/query', databaseQueryResponseSchema, {
-    method: 'POST',
-    body: request,
-    signal,
-  });
-
-/* ==========================================================================
- * Uploads & assets
- * ======================================================================= */
 
 export const uploadFile = (file: File, extra?: { sourceId?: string; investigationId?: string }) => {
   const formData = new FormData();
@@ -264,97 +246,6 @@ export const assetPageUrl = (assetId: string, page: number) =>
 
 /* ==========================================================================
  * Investigations
- * ======================================================================= */
-
-export interface CreateInvestigationBody {
-  readonly question: string;
-  readonly mode: 'fast' | 'deep';
-  readonly asset_ids?: string[];
-  readonly case_id?: string | null;
-  readonly stream?: boolean;
-}
-
-export const createInvestigation = (body: CreateInvestigationBody) =>
-  apiRequest('/api/investigations', createInvestigationResponseSchema, {
-    method: 'POST',
-    body: { stream: true, ...body },
-  });
-
-export const continueInvestigation = (id: string, question: string) =>
-  apiRequest(
-    `/api/investigations/${encodeURIComponent(id)}/continue`,
-    createInvestigationResponseSchema,
-    { method: 'POST', body: { question, stream: true } },
-  );
-
-export const getInvestigation = (id: string, signal?: AbortSignal) =>
-  apiRequest(`/api/investigations/${encodeURIComponent(id)}`, investigationAnswerSchema, {
-    signal,
-  });
-
-export const listInvestigations = (signal?: AbortSignal) =>
-  apiRequest('/api/investigations', listOf(investigationSummarySchema), { signal });
-
-export const getInvestigationTrace = (id: string, signal?: AbortSignal) =>
-  apiRequest(`/api/investigations/${encodeURIComponent(id)}/trace`, listOf(traceStepSchema), {
-    signal,
-  });
-
-export const getInvestigationAutopsy = (id: string, signal?: AbortSignal) =>
-  apiRequest(`/api/investigations/${encodeURIComponent(id)}/autopsy`, searchAutopsySchema, {
-    signal,
-  });
-
-export const getInvestigationGraph = (id: string, signal?: AbortSignal) =>
-  apiRequest(`/api/investigations/${encodeURIComponent(id)}/graph`, graphViewSchema, { signal });
-
-export const investigationExportUrl = (id: string, format: 'json' | 'markdown') =>
-  buildUrl(`/api/investigations/${encodeURIComponent(id)}/export`, { format });
-
-export const investigationStreamUrl = (id: string) =>
-  buildUrl(`/api/stream/investigation/${encodeURIComponent(id)}`);
-
-/* ==========================================================================
- * Cases
- * ======================================================================= */
-
-export const listCases = (signal?: AbortSignal) =>
-  apiRequest('/api/cases', listOf(investigationCaseSchema), { signal });
-
-/* ==========================================================================
- * Entities, evidence, graph
- * ======================================================================= */
-
-export const getEntity = (id: string, signal?: AbortSignal) =>
-  apiRequest(`/api/entities/${encodeURIComponent(id)}`, entityDetailSchema, { signal });
-
-export const searchEntities = (query: string, type?: string, signal?: AbortSignal) =>
-  apiRequest('/api/entities', listOf(canonicalEntitySchema), {
-    searchParams: { q: query, type },
-    signal,
-  });
-
-export const resolveEntity = (surface: string) =>
-  apiRequest('/api/entities/resolve', entityResolutionSchema, {
-    method: 'POST',
-    body: { surface },
-  });
-
-export const getEvidence = (id: string, signal?: AbortSignal) =>
-  apiRequest(`/api/evidence/${encodeURIComponent(id)}`, evidenceItemSchema, { signal });
-
-export const getGraph = (
-  nodeId: string,
-  params: { depth?: number; types?: string } = {},
-  signal?: AbortSignal,
-) =>
-  apiRequest(`/api/graph/${encodeURIComponent(nodeId)}`, graphViewSchema, {
-    searchParams: { depth: params.depth, types: params.types },
-    signal,
-  });
-
-/* ==========================================================================
- * Sources
  * ======================================================================= */
 
 export const listSources = (signal?: AbortSignal) =>

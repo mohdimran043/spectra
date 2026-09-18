@@ -51,7 +51,7 @@ export function SessionProvider({
 }) {
   const [role, setRoleState] = useState<Role>(DEFAULT_ROLE);
   const [userId, setUserIdState] = useState<string>(DEFAULT_USER_ID);
-  const [theme, setThemeState] = useState<ThemePreference>('system');
+  const [theme, setThemeState] = useState<ThemePreference>('light');
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {

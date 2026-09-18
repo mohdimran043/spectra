@@ -11,7 +11,5 @@
  * instead of failing the whole screen.
  */
 export * from './schemas/primitives';
-export * from './schemas/evidence';
 export * from './schemas/search';
-export * from './schemas/investigation';
 export * from './schemas/system';
