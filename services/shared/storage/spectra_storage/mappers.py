@@ -310,7 +310,7 @@ def case_values(case: InvestigationCase) -> dict[str, Any]:
         "updated_at": case.updated_at,
         "evidence_count": case.evidence_count,
         "contradiction_count": case.contradiction_count,
-        "hypothesis_count": case.hypothesis_count,
+        "claim_count": case.claim_count,
         "confidence": case.confidence,
     }
 
@@ -327,7 +327,7 @@ def case_model(row: InvestigationCaseRow) -> InvestigationCase:
         updated_at=row.updated_at,
         evidence_count=row.evidence_count,
         contradiction_count=row.contradiction_count,
-        hypothesis_count=row.hypothesis_count,
+        claim_count=row.claim_count,
         confidence=row.confidence,
     )
 

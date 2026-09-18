@@ -1,9 +1,10 @@
 """SPECTRA Brain - the dynamic investigation loop.
 
     understand -> plan -> select tools -> execute (parallel where independent)
-      -> observe -> update evidence / entities / graph
-      -> sufficient? --no--> replan (new tools OR new hypotheses) --loop
-                     --yes-> disproof -> contradictions -> verify -> synthesise
+      -> observe -> update evidence / entities / graph -> build claims
+      -> sufficient? --no--> replan (new tools OR new claims) --loop
+                     --yes-> disproof the leading claim -> contradictions
+                             -> verify -> synthesise
 
 The loop is driven by the evidence gap, not by a script: what gets called next
 is decided from what the last round actually returned.
@@ -22,20 +23,19 @@ from spectra_config.logging import get_logger, investigation_id_var
 from spectra_schemas import (
     AgentName,
     AnswerStatus,
-    HypothesisStatus,
+    ClaimStatus,
     InvestigationState,
     InvestigationStatus,
     PermissionContext,
     SearchMode,
-    TraceStatus,
 )
 from spectra_schemas import (
     investigation_id as new_investigation_id,
 )
 
 from . import availability, conclusion, observation, state_ops, sufficiency
+from .agents.claim import ClaimBuilder
 from .agents.disproof import DisproofAgent
-from .agents.hypothesis import HypothesisEngine
 from .agents.verifier import Verifier
 from .autopsy import AutopsyBuilder
 from .context import AgentServices, ToolContext
@@ -68,7 +68,7 @@ class SpectraBrain:
         settings: Settings | None = None,
         registry: ToolRegistry | None = None,
         understanding: QueryUnderstandingService | None = None,
-        hypotheses: HypothesisEngine | None = None,
+        claims: ClaimBuilder | None = None,
         disproof: DisproofAgent | None = None,
         verifier: Verifier | None = None,
         synthesiser: AnswerSynthesiser | None = None,
@@ -85,7 +85,7 @@ class SpectraBrain:
         self._flags = self._settings.agent_flags()
         self._registry = registry or build_registry(self._flags)
         self._understanding = understanding or QueryUnderstandingService(self._settings, self._recorder)
-        self._hypotheses = hypotheses or HypothesisEngine(self._settings, self._recorder)
+        self._claims = claims or ClaimBuilder(self._settings, self._recorder)
         self._disproof = disproof
         self._verifier = verifier or Verifier(self._settings, self._recorder)
         self._synthesiser = synthesiser or AnswerSynthesiser(self._settings, self._recorder)
@@ -99,7 +99,7 @@ class SpectraBrain:
         self._phases = ReasoningPhases(
             settings=self._settings,
             flags=self._flags,
-            hypotheses=self._hypotheses,
+            claims=self._claims,
             verifier=self._verifier,
             tracer=self._tracer,
             disproof=disproof,
@@ -258,13 +258,9 @@ class SpectraBrain:
             state = observation.observe(run.state, results)
             run.state = state
         state = await self._link_application(run, state)
-        state = await self._tracer.step(
-            state,
-            AgentName.HYPOTHESIS,
-            title="Hypothesis engine skipped",
-            status=TraceStatus.SKIPPED,
-            output_summary="fast mode answers from exact retrieval only; run deep mode for competing explanations",
-        )
+        # Fast mode states its claims extractively: no model call, no tool call,
+        # so the answer still carries claims without breaking the fast budget.
+        state = await self._phases.build_claims(state, allow_llm=False)
         state = state_ops.with_iteration(state, perf_counter() - started)
         return await self._conclude(state, allow_llm=False)
 
@@ -274,7 +270,7 @@ class SpectraBrain:
         while plan:
             results = await run.batch(plan)
             run.state = observation.observe(run.state, results)
-            run.state = await self._phases.reason(run.state)
+            run.state = await self._phases.build_claims(run.state)
             run.state = state_ops.with_iteration(run.state, perf_counter() - started)
             await self._persist(run.state)
             exhaustion = self._budget_stop(run.state, perf_counter() - started)
@@ -309,14 +305,13 @@ class SpectraBrain:
     # -- conclusion -------------------------------------------------------
     async def _conclude(self, state: InvestigationState, *, allow_llm: bool) -> InvestigationState:
         started = perf_counter()
-        answer, claims = await self._synthesiser.compose(state, allow_llm=allow_llm)
+        answer = await self._synthesiser.compose(state, allow_llm=allow_llm)
         score = sufficiency.compute(state.evidence)
         status = conclusion.answer_status(state, score, self._settings.sufficiency_threshold)
-        confidence = conclusion.confidence_for(state, claims, score, status)
+        confidence = conclusion.confidence_for(state, score, status)
         state = state_ops.touch(
             state,
             answer=answer,
-            claims=claims,
             answer_status=status,
             confidence=confidence,
             followups=conclusion.followups(state),
@@ -326,8 +321,10 @@ class SpectraBrain:
             state,
             AgentName.BRAIN,
             title="Composed the answer",
-            output_summary=f"status={status.value}, confidence={confidence:.2f}, claims={len(claims)}",
-            evidence_ids=[e for claim in claims for e in claim.evidence_ids],
+            output_summary=(
+                f"status={status.value}, confidence={confidence:.2f}, claims={len(state.claims)}"
+            ),
+            evidence_ids=[e for claim in state.claims for e in claim.evidence_ids],
         )
 
     def _finalise(self, state: InvestigationState, started: float) -> InvestigationState:
@@ -364,11 +361,11 @@ class SpectraBrain:
             return None
         if sufficiency.compute(state.evidence) < self._settings.sufficiency_threshold:
             return None
-        leader = state.leading_hypothesis()
-        # Confidence is a share across competing explanations, so the stop test
-        # reads the leader's *status* - its own balance of evidence.
-        if leader is None or leader.status is HypothesisStatus.SUPPORTED:
-            return "sufficient evidence gathered, with a supported leading explanation"
+        leader = state.leading_claim()
+        # The stop test reads the leader's *status*: its own balance of evidence,
+        # which is what decides whether the claim may be asserted at all.
+        if leader is None or leader.status is ClaimStatus.SUPPORTED:
+            return "sufficient evidence gathered, with a supported leading claim"
         return None
 
     async def _persist(self, state: InvestigationState) -> None:

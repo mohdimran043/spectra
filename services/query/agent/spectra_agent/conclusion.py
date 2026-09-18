@@ -6,13 +6,11 @@ and the contradictions - never from the fluency of the generated text.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
-from spectra_schemas import AnswerStatus, Claim, InvestigationState
+from spectra_schemas import AnswerStatus, InvestigationState
 
 from . import sufficiency
 
-# Confidence when nothing was verified and no claims survived: half the
+# Confidence when no claim was stated and nothing was verified: half the
 # sufficiency score, i.e. "there is evidence, but nothing was corroborated".
 UNVERIFIED_DAMPING = 0.5
 
@@ -31,11 +29,18 @@ def answer_status(state: InvestigationState, score: float, threshold: float) -> 
     return AnswerStatus.PARTIALLY_SUPPORTED
 
 
-def confidence_for(
-    state: InvestigationState, claims: Sequence[Claim], score: float, status: AnswerStatus
-) -> float:
+def confidence_for(state: InvestigationState, score: float, status: AnswerStatus) -> float:
+    """How confident the answer is: the leading claim's own confidence.
+
+    It is that claim's confidence and nothing else - not an average across the
+    claims and not a share of any total - because the answer asserts that claim.
+    The fallbacks below only apply when no claim was stated at all.
+    """
     if status is AnswerStatus.INSUFFICIENT_EVIDENCE:
         return round(score, 4)
+    leader = state.leading_claim()
+    if leader is not None:
+        return round(leader.confidence, 4)
     intent = state.understanding.intent if state.understanding else None
     authoritative = sufficiency.authoritative_item(state.evidence, intent)
     if authoritative is not None and state.verification is None:
@@ -43,9 +48,7 @@ def confidence_for(
         return round(authoritative.weight, 4)
     if state.verification is not None:
         return round(state.verification.confidence, 4)
-    if not claims:
-        return round(score * UNVERIFIED_DAMPING, 4)
-    return round(sum(c.confidence for c in claims) / len(claims) * score, 4)
+    return round(score * UNVERIFIED_DAMPING, 4)
 
 
 def followups(state: InvestigationState) -> list[str]:
@@ -53,9 +56,9 @@ def followups(state: InvestigationState) -> list[str]:
     suggestions: list[str] = []
     for gap in sufficiency.gaps(state.evidence)[:2]:
         suggestions.append(f"Broaden the search to close this gap: {gap}")
-    leader = state.leading_hypothesis()
+    leader = state.leading_claim()
     if leader is not None and leader.disproof_probe:
-        suggestions.append(f"Test {leader.hypothesis_id} directly: {leader.disproof_probe}")
+        suggestions.append(f"Test {leader.claim_id} directly: {leader.disproof_probe}")
     for entry in state.agent_availability:
         if not entry.ready and entry.alternatives:
             suggestions.append(

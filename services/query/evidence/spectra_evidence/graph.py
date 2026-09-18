@@ -1,4 +1,4 @@
-"""The evidence graph: entities, assets, evidence, hypotheses and time order.
+"""The evidence graph: entities, assets, evidence, claims and time order.
 
 Written INCREMENTALLY - every ingestion step and every investigation step adds
 the nodes and edges it just learned about, so there is never a batch rebuild and
@@ -19,13 +19,13 @@ from spectra_config.logging import get_logger
 from spectra_schemas import (
     ApplicationLink,
     CanonicalEntity,
+    Claim,
     EntityType,
     EvidenceItem,
     EvidenceStance,
     GraphEdge,
     GraphNode,
     GraphView,
-    Hypothesis,
     Modality,
     TimelineEvent,
 )
@@ -53,7 +53,6 @@ NODE_LABELS: frozenset[str] = frozenset(
         "AudioSegment",
         "DatabaseRecord",
         "ApplicationRecord",
-        "Hypothesis",
         "Claim",
         "Evidence",
     }
@@ -221,27 +220,27 @@ class EvidenceGraph:
         await self._upsert_edge("DERIVED_FROM", item.evidence_id, asset, {})
         for entity in item.entities:
             await self._upsert_edge("REFERS_TO", item.evidence_id, entity, {})
-        for hypothesis_id in item.hypothesis_ids:
-            await self.link_evidence_to_hypothesis(item.evidence_id, hypothesis_id, item.stance)
+        for claim_id in item.claim_ids:
+            await self.link_evidence_to_claim(item.evidence_id, claim_id, item.stance)
         return item.evidence_id
 
-    async def add_hypothesis(self, hypothesis: Hypothesis, *, investigation_id: str | None = None) -> str:
+    async def add_claim(self, claim: Claim, *, investigation_id: str | None = None) -> str:
         properties = {
-            "description": hypothesis.description,
-            "status": hypothesis.status.value,
-            "confidence": hypothesis.confidence,
-            "prior": hypothesis.prior,
-            "verified": hypothesis.verified,
+            "description": claim.text,
+            "status": claim.status.value,
+            "confidence": claim.confidence,
+            "prior": claim.confidence,
+            "verified": claim.verified,
             "investigation_id": investigation_id,
         }
-        await self._upsert_node(hypothesis.hypothesis_id, "Hypothesis", properties)
-        return hypothesis.hypothesis_id
+        await self._upsert_node(claim.claim_id, "Claim", properties)
+        return claim.claim_id
 
-    async def link_evidence_to_hypothesis(
-        self, evidence_id: str, hypothesis_id: str, stance: EvidenceStance
+    async def link_evidence_to_claim(
+        self, evidence_id: str, claim_id: str, stance: EvidenceStance
     ) -> str:
         edge_type = STANCE_EDGES[stance]
-        return await self._upsert_edge(edge_type, evidence_id, hypothesis_id, {"stance": stance.value})
+        return await self._upsert_edge(edge_type, evidence_id, claim_id, {"stance": stance.value})
 
     async def link_same_entity(
         self, entity_a: str, entity_b: str, *, confidence: float = 1.0, method: str = ""
@@ -323,7 +322,7 @@ class EvidenceGraph:
     ) -> GraphView:
         """Everything recorded for one investigation, expanded by ``depth``."""
         anchors: list[dict[str, Any]] = []
-        for label in ("Evidence", "Hypothesis", "Claim", "Event"):
+        for label in ("Evidence", "Claim", "Claim", "Event"):
             found = await self._store.find_nodes(
                 label, {"investigation_id": investigation_id}, limit=limit
             )

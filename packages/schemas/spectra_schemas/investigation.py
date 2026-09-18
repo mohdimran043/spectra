@@ -126,6 +126,8 @@ class InvestigationMetrics(BaseModel):
     evidence_used: int = 0
     evidence_rejected: int = 0
     contradictions: int = 0
+    claims_made: int = 0
+    claims_refuted: int = 0
     model_latency_ms: dict[str, float] = Field(default_factory=dict)
     models_used: list[str] = Field(default_factory=list)
     stage_latency_ms: dict[str, float] = Field(default_factory=dict)

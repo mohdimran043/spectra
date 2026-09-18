@@ -126,5 +126,5 @@ Honest limitations of the current implementation at true production scale:
   neighbourhoods, not for global analytics — use Neo4j.
 - The worker's job claim is simple polling. At high ingest rates it should become a real queue
   (the `CacheStore` interface already fronts Redis, so a Redis stream is the natural step).
-- Hypothesis generation is one deep-brain call per investigation; at thousands of concurrent
+- Claim construction is one deep-brain call per investigation; at thousands of concurrent
   investigations that becomes the cost centre, and would want batching at the inference pool.

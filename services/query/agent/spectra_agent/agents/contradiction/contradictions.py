@@ -16,7 +16,7 @@ from itertools import combinations
 
 from spectra_schemas import Contradiction, EvidenceItem
 
-from ..hypothesis.causal_lexicon import NEGATION_MAP
+from ...causal_lexicon import NEGATION_MAP
 
 _FIELD_VALUE = re.compile(r"\b([a-z][a-z_ ]{2,24}?)\s*[:=]\s*([A-Za-z0-9.,%-]+)")
 # Conflicts between unrelated items are noise, so a shared entity (or a shared

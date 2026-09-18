@@ -15,7 +15,7 @@ import {
   IconWarning,
   type IconProps,
 } from '@/components/icons';
-import type { AgentName } from '@/lib/schemas/primitives';
+import { agentNameSchema, type AgentName } from '@/lib/schemas/primitives';
 
 const AGENT_ICON: Record<AgentName, ComponentType<IconProps>> = {
   brain: IconBrain,
@@ -26,12 +26,39 @@ const AGENT_ICON: Record<AgentName, ComponentType<IconProps>> = {
   database_agent: IconDatabase,
   graph_agent: IconGraph,
   entity_resolver: IconEntity,
-  hypothesis_engine: IconBrain,
+  claim_builder: IconBrain,
   disproof_agent: IconDisproof,
   verifier: IconVerifier,
   timeline_builder: IconTimeline,
   contradiction_radar: IconWarning,
 };
+
+const AGENT_NAMES: ReadonlySet<string> = new Set<string>(agentNameSchema.options);
+
+/**
+ * `GET /api/agents/status` reports the toggleable flag (`claim`, `vision`) as
+ * well as the agent it belongs to (`claim_builder`, `vision_agent`), so a row
+ * can arrive under either name. Anything outside the contract's vocabulary
+ * resolves to `null` and renders without a glyph rather than guessing.
+ */
+const FLAG_ALIAS: Readonly<Record<string, AgentName>> = {
+  claim: 'claim_builder',
+  disproof: 'disproof_agent',
+  document: 'document_agent',
+  vision: 'vision_agent',
+  image: 'vision_agent',
+  video: 'video_agent',
+  audio: 'audio_agent',
+  database: 'database_agent',
+  graph: 'graph_agent',
+  timeline: 'timeline_builder',
+  contradiction: 'contradiction_radar',
+};
+
+export function resolveAgentName(name: string): AgentName | null {
+  if (AGENT_NAMES.has(name)) return name as AgentName;
+  return FLAG_ALIAS[name] ?? null;
+}
 
 /** Each agent gets one drawn glyph, consistent everywhere it appears. */
 export function AgentGlyph({ agent, size = 14 }: { agent: AgentName; size?: number }) {

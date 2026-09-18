@@ -2,7 +2,7 @@
 
 # SPECTRA
 
-**Hypothesis-Driven Multimodal Enterprise Investigation Agent**
+**Evidence-Grounded Multimodal Enterprise Investigation Agent**
 
 *Search → Understand → Investigate → Correlate → Challenge → Verify → Explain → Navigate*
 
@@ -14,8 +14,8 @@
 
 SPECTRA is an agentic enterprise investigation platform. Given a question, it autonomously
 investigates across **documents, images, audio, video, structured databases and configurable
-external sources**. It resolves entities across modalities, generates and tests **competing
-hypotheses**, retrieves supporting *and disconfirming* evidence, detects contradictions,
+external sources**. It resolves entities across modalities, builds **evidence-grounded claims**,
+retrieves supporting *and disconfirming* evidence, detects contradictions,
 reconstructs timelines, maintains an evidence graph, verifies its conclusions, exposes full
 provenance, and links every discovered entity to the corresponding enterprise application record.
 
@@ -27,14 +27,19 @@ and billions of rows without a rewrite.
 Most "multimodal RAG" systems retrieve, concatenate and generate. SPECTRA is built around four ideas
 that retrieval systems do not have:
 
-**1. Hypotheses, not answers.** For an investigation question it generates competing explanations and
-scores each against the evidence — with an explicit lifecycle
-(`OPEN → SUPPORTED / WEAK / CONTRADICTED / DISPROVED / INSUFFICIENT`).
+**1. Claims, grounded in the evidence that produced them.** For an investigation question it derives
+claims from what it actually retrieved, tied to the focal entity, and scores each one **on its own
+evidence alone**: supporting weight, independent sources, diversity, minus a contradiction penalty.
+Every claim carries a status (`supported / weak / contradicted / refuted / insufficient`), the
+evidence ids on both sides, and the probe used to try to break it. Claims are not ranked against each
+other and their confidences are not normalised, so a well-supported conclusion keeps a high
+confidence instead of having it divided among alternatives it was never in competition with.
 
-**2. It tries to prove itself wrong.** The Disproof Agent is mandatory. For the leading hypothesis it
-asks *"what evidence would refute this?"* and actively goes looking. A support-only system finds
-three documents that agree with its first guess and reports 95% confidence. This one goes hunting for
-the document that disagrees.
+**2. It tries to prove itself wrong.** The Disproof Agent is mandatory, and it is what keeps
+confidence honest. For the leading claim it asks *"what evidence would refute this?"* and actively
+goes looking. A support-only system finds three documents that agree with its first guess and reports
+95% confidence. This one goes hunting for the document that disagrees; a claim the probe knocks down
+is marked `refuted` and drops out.
 
 **3. Contradictions are explained, never hidden.** When the database says APPROVED and a document
 says REJECTED, SPECTRA surfaces the conflict and adjudicates it using version status, recency,
@@ -56,11 +61,12 @@ INGESTION (offline, once)                      SEARCH (online, per query)
 Source → Connector/Upload                      Query / image upload
   → extraction → normalisation                   → understanding
   → OCR / ASR / vision                           → SPECTRA BRAIN
-  → chunking / scene segmentation                   ├ plan + hypotheses
+  → chunking / scene segmentation                   ├ plan
   → entity extraction                               ├ select tools + sources
   → embeddings                                      ├ retrieve evidence
   → vector + lexical indexes                        ├ entity resolution
   → evidence graph                                  ├ evidence graph
+                                                    ├ build claims
                                                     ├ support + DISPROOF search
                                                     ├ contradiction check
                                                     ├ verify
@@ -156,11 +162,11 @@ small corpus (a 13-page PDF plus a screenshot, 14 chunks, 5 entities):
 | **Search (uncached)** | **92 ms** | full five-stage pipeline incl. cross-encoder rerank (median of 7 distinct queries, 90–93 ms) |
 | **Search (cache hit)** | **2 ms** | same query, same role, same index version |
 | **Fast-mode investigation** | **49 ms** | identifier lookup, 4 tool calls, no deep brain |
-| Deep-mode investigation | 67 s | 3 iterations, 12 tool calls, 8 hypotheses, disproof + verification |
+| Deep-mode investigation | 67 s | 3 iterations, 12 tool calls, 8 claims, disproof + verification |
 
 The shape is the point. Ingestion is seconds *per object, once*. Search is ~92 ms and does not grow
 with corpus size, because it reads indexes rather than objects. A deep investigation costs a minute
-because it is doing a minute of work — a dozen tool calls, competing hypotheses, a disconfirming
+because it is doing a minute of work — a dozen tool calls, claim construction, a disconfirming
 search and a verification pass — not because retrieval is slow.
 
 ### Without a GPU
@@ -230,7 +236,7 @@ Direct (non-Make) equivalents are in [docs/deployment.md](docs/deployment.md).
 | | |
 |---|---|
 | [architecture.md](docs/architecture.md) | system design, layout, the two pipelines |
-| [agent-design.md](docs/agent-design.md) | the Brain, hypotheses, disproof, verification, abstention |
+| [agent-design.md](docs/agent-design.md) | the Brain, claims, disproof, verification, abstention |
 | [search-architecture.md](docs/search-architecture.md) | staged retrieval and unified scoring |
 | [model-strategy.md](docs/model-strategy.md) | model abstraction, registry, degradation |
 | [4090-deployment.md](docs/4090-deployment.md) | 24 GB scheduling, OOM ladder, GPU dashboard |
@@ -248,7 +254,8 @@ Direct (non-Make) equivalents are in [docs/deployment.md](docs/deployment.md).
 This is not "a multimodal chatbot." The architecture is arranged so that ten capabilities can be
 independently ablated and measured against five baselines over the same corpus — BM25, vector RAG,
 multimodal RAG, agentic retrieval, and full SPECTRA. The `D → E` comparison isolates the contribution
-of hypotheses, disconfirming search and verification from the contribution of merely being agentic.
+of evidence-grounded claims, disconfirming search and verification from the contribution of merely
+being agentic.
 See [docs/evaluation.md](docs/evaluation.md).
 
 ## Current limitations

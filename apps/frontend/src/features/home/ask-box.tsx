@@ -14,7 +14,7 @@ import { useSession } from '@/features/shell/session-context';
 
 const MODE_EXPLANATION: Record<SearchMode, string> = {
   fast: 'One retrieval pass over the fastest sources. Answers a lookup in seconds.',
-  deep: 'Competing hypotheses, disproof probes and verification. Minutes, not seconds.',
+  deep: 'Claims weighed one by one, disproof probes and verification. Minutes, not seconds.',
 };
 
 const EXAMPLES: readonly string[] = [

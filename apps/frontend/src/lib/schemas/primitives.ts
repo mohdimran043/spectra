@@ -77,15 +77,19 @@ export type EvidenceKind = z.infer<typeof evidenceKindSchema>;
 export const evidenceStanceSchema = z.enum(['supporting', 'contradicting', 'neutral']);
 export type EvidenceStance = z.infer<typeof evidenceStanceSchema>;
 
-export const hypothesisStatusSchema = z.enum([
-  'open',
+/**
+ * A claim's standing. Claims are judged one at a time against their own
+ * evidence, so these values describe a single statement's footing and never a
+ * position in a field of rivals.
+ */
+export const claimStatusSchema = z.enum([
   'supported',
   'weak',
   'contradicted',
-  'disproved',
+  'refuted',
   'insufficient',
 ]);
-export type HypothesisStatus = z.infer<typeof hypothesisStatusSchema>;
+export type ClaimStatus = z.infer<typeof claimStatusSchema>;
 
 export const confidenceLabelSchema = z.enum(['high', 'medium', 'low', 'insufficient']);
 export type ConfidenceLabel = z.infer<typeof confidenceLabelSchema>;
@@ -128,7 +132,7 @@ export const agentNameSchema = z.enum([
   'database_agent',
   'graph_agent',
   'entity_resolver',
-  'hypothesis_engine',
+  'claim_builder',
   'disproof_agent',
   'verifier',
   'timeline_builder',

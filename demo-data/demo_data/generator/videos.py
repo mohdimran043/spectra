@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Final, Sequence
+from typing import Final
 
 from spectra_config.logging import get_logger
 
@@ -103,7 +104,7 @@ def _encode(frames: Sequence[Path], durations: Sequence[float], audio: Path, tar
             workdir: Path) -> None:
     listing = workdir / "frames.txt"
     lines: list[str] = []
-    for frame, duration in zip(frames, durations):
+    for frame, duration in zip(frames, durations, strict=True):
         lines.append(f"file '{frame.as_posix()}'")
         lines.append(f"duration {duration:.3f}")
     lines.append(f"file '{frames[-1].as_posix()}'")

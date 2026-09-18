@@ -34,49 +34,54 @@ MIN_INDEPENDENT_SOURCES = 2
 # therefore the smallest value that rejects "one source, one modality".
 MIN_DIVERSITY = 0.34
 
-# -- hypothesis scoring ---------------------------------------------------
-# Laplace-style smoothing in the likelihood ratio so a single item cannot drive
-# the posterior to 0 or 1.
-SUPPORT_SMOOTHING = 0.5
+# -- claim scoring --------------------------------------------------------
+# A claim is scored on its OWN evidence.  Nothing here divides a probability
+# mass between rival statements, so a single well-corroborated conclusion keeps
+# a high confidence instead of losing most of it to the alternatives it was
+# listed beside.
 
 # Full confidence requires at least two supporting items (see
 # MIN_INDEPENDENT_SOURCES - the same corroboration argument).
 MIN_SUPPORTING_ITEMS = 2
 
-# Damping floors: a hypothesis backed by a single narrow source keeps at most
-# 60% (diversity) x 50% (count) of its raw posterior.
-DIVERSITY_DAMPING_FLOOR = 0.6
-COUNT_DAMPING_FLOOR = 0.5
+# Quality is the mean weight of the strongest few supporting items: a long tail
+# of weak corroboration must not dilute a claim that two strong items back.
+CLAIM_QUALITY_SAMPLE = 4
 
-# Status machine boundaries.  0.60 is "more likely than not, with corroboration";
-# 0.30 is the point where ConfidenceLabel drops to INSUFFICIENT.
-HYPOTHESIS_SUPPORTED_MIN = 0.60
-HYPOTHESIS_CONTRADICTED_MAX = 0.30
+# Corroboration blend.  Volume alone is not corroboration - four excerpts of one
+# PDF are one source's word - so independence and diversity together outweigh
+# the item count.
+CLAIM_COUNT_WEIGHT = 0.40
+CLAIM_SOURCE_WEIGHT = 0.35
+CLAIM_DIVERSITY_WEIGHT = 0.25
 
-# Status is decided on the *balance of evidence*, not on the displayed
-# confidence (which is a share across competing explanations).  Supporting
-# evidence must outweigh conflicting evidence two to one before a hypothesis may
-# be called supported; conflicting evidence that merely matches the support is
-# already enough to call it contradicted.
-SUPPORT_DOMINANCE_RATIO = 2.0
-CONTRADICTED_WEIGHT_RATIO = 1.0
+# A claim backed by one narrow source keeps 55% of its evidence quality: thin
+# corroboration is a discount on a real finding, not an erasure of it.
+CORROBORATION_FLOOR = 0.55
 
-# Disproof: contradicting evidence must outweigh supporting evidence three to
-# one, across at least two independent items, before we declare a hypothesis
-# dead.  One loud contradiction is a conflict, not a disproof.
-DISPROOF_WEIGHT_RATIO = 3.0
-MIN_CONTRADICTING_FOR_DISPROOF = 2
+# Status machine boundary.  0.60 is "more likely than not, with corroboration";
+# below it a claim is reported as weak rather than supported.
+CLAIM_SUPPORTED_MIN = 0.60
 
-# Below this the leading explanation is too weak to stop investigating.
+# Conflicting evidence worth two fifths of the support is already enough to say
+# credible evidence points the other way; once it matches the support outright,
+# across at least two independent items, the claim is refuted.  One loud
+# contradiction is a conflict, not a refutation.
+CONTRADICTED_WEIGHT_RATIO = 0.4
+REFUTED_WEIGHT_RATIO = 1.0
+MIN_CONTRADICTING_FOR_REFUTED = 2
+
+# Below this the leading claim is too weak to stop investigating.
 WEAK_LEADER_CONFIDENCE = 0.35
 
-# Competing-explanation set size: fewer than three is not a competition, more
-# than six cannot be probed inside a deep-mode budget.
-MIN_HYPOTHESES_DEEP = 3
-MAX_HYPOTHESES = 6
+# Claim-set size: a deep investigation should state more than a single finding
+# when the evidence carries one, and more than six claims cannot all be probed
+# inside a deep-mode budget.
+MIN_CLAIMS_DEEP = 3
+MAX_CLAIMS = 6
 
-# An LLM-proposed hypothesis must share at least this many content tokens with
-# the retrieved corpus, otherwise it is an invention and is dropped.
+# An LLM-proposed claim must share at least this many content tokens with the
+# retrieved corpus, otherwise it is an invention and is dropped.
 LLM_GROUNDING_MIN_OVERLAP = 2
 
 # -- disproof probe -------------------------------------------------------
@@ -96,5 +101,5 @@ TRACE_QUEUE_SIZE = 256
 
 # -- orchestration --------------------------------------------------------
 # One retrieval pass has tested nothing: deep mode always runs at least a
-# second, hypothesis-directed pass before it is allowed to answer.
+# second, claim-directed pass before it is allowed to answer.
 MIN_DEEP_ITERATIONS = 2

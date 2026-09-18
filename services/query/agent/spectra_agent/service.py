@@ -108,7 +108,7 @@ class InvestigationService:
 
     # -- plain search -----------------------------------------------------
     async def run_search(self, request: SearchRequest, ctx: PermissionContext | None = None) -> SearchResponse:
-        """The non-agentic path: retrieval only, no hypotheses, no synthesis."""
+        """The non-agentic path: retrieval only, no claims, no synthesis."""
         search = self._services.search
         if search is None:
             return SearchResponse(
@@ -182,7 +182,7 @@ class InvestigationService:
                     "status": state.status,
                     "evidence_count": len(state.evidence.items),
                     "contradiction_count": len(state.contradictions),
-                    "hypothesis_count": len(state.hypotheses),
+                    "claim_count": len(state.claims),
                     "confidence": state.confidence,
                     "updated_at": state.updated_at,
                 }
@@ -225,7 +225,6 @@ class InvestigationService:
             status=state.answer_status,
             entities=[{"entity_id": entity} for entity in state.entities],
             evidence=evidence,
-            hypotheses=list(state.hypotheses),
             contradictions=list(state.contradictions),
             timeline=list(state.timeline),
             claims=list(state.claims),

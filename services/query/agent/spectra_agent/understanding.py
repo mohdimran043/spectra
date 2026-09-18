@@ -187,7 +187,7 @@ _INTENT_REASON: dict[QueryIntent, str] = {
     QueryIntent.STRUCTURED_QUERY: "The question asks for counts or aggregates, so the structured sources lead.",
     QueryIntent.SEMANTIC_SEARCH: "No identifier or aggregate was detected, so this runs as a meaning-based search.",
     QueryIntent.MEDIA_LOCATION: "The question asks where something appears, so media indexes lead.",
-    QueryIntent.INVESTIGATION: "The question asks for a cause, so it runs as a full investigation with competing hypotheses.",
+    QueryIntent.INVESTIGATION: "The question asks for a cause, so it runs as a full investigation with claims that get probed.",
     QueryIntent.TEMPORAL: "The question is about sequence, so evidence is assembled into a timeline.",
     QueryIntent.CONTRADICTION: "The question asks about conflicting information, so contradiction detection is mandatory.",
     QueryIntent.COMPARISON: "The question compares two things, so evidence is gathered for each side.",

@@ -49,8 +49,10 @@ class TestScenarioOneImageToInvestigation:
         assert state.trace, "the investigation must leave an observable trace"
         assert answer.evidence, "the investigation must produce evidence"
         assert all(item.get("citation") for item in answer.evidence), "every item needs a citation"
-        assert answer.hypotheses, "deep mode must generate competing hypotheses"
-        assert any(h.disproof_searched for h in answer.hypotheses), "the disproof probe must run"
+        assert answer.claims, "deep mode must produce evidence-grounded claims"
+        assert any(c.disproof_searched for c in answer.claims), "the disproof probe must run"
+        leading = max(answer.claims, key=lambda c: c.confidence)
+        assert leading.confidence > 0.0, "a claim must be scored on its own evidence"
 
     async def test_no_chain_of_thought_is_exposed(self, live_container, analyst):
         state = await live_container.investigations.investigate(

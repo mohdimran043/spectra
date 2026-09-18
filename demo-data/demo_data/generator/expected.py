@@ -14,9 +14,9 @@ be checked without depending on how a baseline chunks the corpus.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 from .audio import AudioArtifact
 from .constants import EXPECTED_DIR

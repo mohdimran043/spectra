@@ -7,7 +7,7 @@ the expected answers the evaluation harness reads.
 
 from __future__ import annotations
 
-from .constants import LARGE, MEDIUM, SMALL, SCALES, ScaleProfile
+from .constants import LARGE, MEDIUM, SCALES, SMALL, ScaleProfile
 from .manifest import load_manifest
 from .pipeline import GenerationResult, generate, resolve_scale
 from .world import World, build_world

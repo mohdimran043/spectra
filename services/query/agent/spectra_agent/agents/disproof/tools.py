@@ -6,6 +6,7 @@ from typing import Any
 
 from spectra_schemas import AgentName, EvidenceItem, EvidenceStance, ToolResult, ToolSpec
 
+from ...causal_lexicon import disproof_queries
 from ...context import ToolContext
 from ...stance import classify, restance
 from ...thresholds import MAX_NEGATION_QUERIES
@@ -14,7 +15,6 @@ from ...tools.claim_search import search_claim
 from ...tools.payloads import evidence_payload
 from ...tools.schemas import DEFAULT_CLAIM_TOP_K, EVIDENCE_OUTPUT, integer, obj, string, string_array
 from ...tools.timeouts import CLAIM_SEARCH_TIMEOUT_SECONDS
-from ..hypothesis.causal_lexicon import disproof_queries
 
 
 class SearchDisconfirmingEvidenceTool(Tool):

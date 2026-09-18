@@ -1,9 +1,13 @@
-"""Causal vocabulary: candidate-cause mining, error codes and negation.
+"""Causal vocabulary: cause mining, error codes and negation.
 
-The hypothesis engine mines causes *out of the retrieved corpus* using this
-vocabulary - a category only becomes a hypothesis when its terms actually occur
-in the evidence.  The disproof agent uses the same table in reverse, turning a
-category into the competing outcomes that would prove it wrong.
+One shared table, read in both directions.  The claim builder reads it forwards
+- a cause may only appear in a claim when its terms actually occur in the
+retrieved evidence - and the disproof agent reads it backwards, turning a cause
+into the competing outcomes that would show the claim is wrong.  The stance
+classifier, the verifier and the contradiction radar read the same table, so the
+whole system argues in one language.
+
+It lives at the package root because no single agent owns it.
 """
 
 from __future__ import annotations
@@ -12,7 +16,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from ...lexicons import STOPWORDS
+from .lexicons import STOPWORDS
 
 
 @dataclass(frozen=True)

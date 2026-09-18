@@ -43,7 +43,7 @@ MODALITY_TOOLS: dict[Modality, str] = {
 
 _INTENT_REASONS: dict[QueryIntent, str] = {
     QueryIntent.LOOKUP_BY_ID: "The query asked for one record, so exact lookup ran before any semantic search.",
-    QueryIntent.INVESTIGATION: "The query asked for a cause, so competing hypotheses were generated and probed.",
+    QueryIntent.INVESTIGATION: "The query asked for a cause, so the claims the evidence supports were stated and probed.",
     QueryIntent.CONTRADICTION: "The query asked about conflicting information, so contradiction detection was mandatory.",
     QueryIntent.TEMPORAL: "The query was about sequence, so dated evidence was assembled into a timeline.",
     QueryIntent.MEDIA_LOCATION: "The query asked where something appears, so media indexes led the search.",

@@ -131,7 +131,7 @@ class TestAgentControlCenter:
         agents = client.get("/api/agents/status").json()
         names = {a["name"] for a in agents}
         assert {"document", "image", "video", "audio", "database", "graph",
-                "entity_resolution", "hypothesis", "disproof", "verifier"} <= names
+                "entity_resolution", "claim", "disproof", "verifier"} <= names
         for agent in agents:
             assert agent["alternatives"], f"{agent['name']} must offer alternatives"
 

@@ -2,7 +2,7 @@
 
 SPECTRA is an agentic enterprise investigation platform. It autonomously investigates questions
 across documents, images, audio, video, structured databases and configurable external sources. It
-resolves entities across modalities, generates and tests competing hypotheses, retrieves supporting
+resolves entities across modalities, builds evidence-grounded claims, retrieves supporting
 *and disconfirming* evidence, detects contradictions, reconstructs timelines, maintains an evidence
 graph, verifies conclusions, exposes provenance, and links discovered entities to enterprise
 application records.
@@ -49,11 +49,12 @@ Source
 User query / image upload
   └─ Query understanding
        └─ SPECTRA BRAIN
-            ├─ Plan / hypotheses
+            ├─ Plan
             ├─ Select tools & sources
             ├─ Retrieve evidence          (reads indexes only)
             ├─ Entity resolution
             ├─ Evidence graph
+            ├─ Build claims from the evidence
             ├─ Support search + disproof search
             ├─ Contradiction check
             ├─ Verify
@@ -105,7 +106,7 @@ spectra/
 │   ├── query/                 PIPELINE B - reads the indexes, never the raw objects
 │   │   ├── search/            Five-stage retrieval + unified scoring
 │   │   ├── evidence/          Ledger, reliability, graph, timeline, contradictions, app resolver
-│   │   └── agent/             The Brain: understanding, tools, hypotheses, disproof, verifier
+│   │   └── agent/             The Brain: understanding, tools, claims, disproof, verifier
 │   │
 │   ├── shared/                Used by both pipelines
 │   │   ├── ai_core/           Model gateway: providers, registry, runtime manager, GPU scheduling
@@ -233,9 +234,10 @@ Not a chatbot and not a fixed script — a dynamic loop over an explicit, serial
 
 ```
 understand → plan → select tools → execute (parallel where independent)
-   → observe → update evidence / entities / graph
-   → sufficient? ──no──> replan (more tools, or new hypotheses) ──┐
-                 └─yes─> disproof → contradictions → verify → synthesise
+   → observe → update evidence / entities / graph → build claims
+   → sufficient? ──no──> replan (more tools, or more claims) ─────┐
+                 └─yes─> disproof the leading claim → contradictions
+                         → verify → synthesise
    ^───────────────────────────────────────────────────────────────┘
 ```
 
@@ -250,7 +252,7 @@ The architecture is arranged so these are each independently measurable:
 
 1. cross-modal entity resolution
 2. evidence-centric investigation
-3. hypothesis-driven retrieval
+3. evidence-grounded claim construction
 4. disconfirming-evidence search
 5. contradiction-aware reasoning
 6. temporal evidence reasoning

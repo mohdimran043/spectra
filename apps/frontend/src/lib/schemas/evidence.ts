@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 import {
+  claimStatusSchema,
   confidenceLabelSchema,
   entityTypeSchema,
   evidenceKindSchema,
   evidenceStanceSchema,
-  hypothesisStatusSchema,
   isoDateTimeSchema,
   modalitySchema,
   provenanceSchema,
@@ -28,26 +28,10 @@ export const evidenceItemSchema = z.object({
   occurred_at: isoDateTimeSchema.nullable().optional(),
   retrieved_at: isoDateTimeSchema.optional(),
   retrieved_by: z.string().default(''),
-  hypothesis_ids: z.array(z.string()).default([]),
+  /** Reverse link: the claims this exhibit was weighed against. */
+  claim_ids: z.array(z.string()).default([]),
 });
 export type EvidenceItem = z.infer<typeof evidenceItemSchema>;
-
-export const hypothesisSchema = z.object({
-  hypothesis_id: z.string(),
-  description: z.string(),
-  rationale: z.string().default(''),
-  status: hypothesisStatusSchema.default('open'),
-  confidence: z.number().default(0),
-  prior: z.number().default(0.25),
-  supporting_evidence: z.array(z.string()).default([]),
-  contradicting_evidence: z.array(z.string()).default([]),
-  disproof_probe: z.string().nullable().default(null),
-  disproof_searched: z.boolean().default(false),
-  verified: z.boolean().default(false),
-  verification_note: z.string().default(''),
-  predicted_signals: z.array(z.string()).default([]),
-});
-export type Hypothesis = z.infer<typeof hypothesisSchema>;
 
 export const contradictionSchema = z.object({
   contradiction_id: z.string(),
@@ -76,12 +60,30 @@ export const timelineEventSchema = z.object({
 });
 export type TimelineEvent = z.infer<typeof timelineEventSchema>;
 
+/**
+ * One asserted statement, standing on its own evidence.
+ *
+ * `confidence` is an absolute reading of how well THIS statement is carried by
+ * the evidence found for it. Claims are not candidates competing for one pot of
+ * belief: a set of confidences does not sum to 1 and must never be rendered as
+ * shares of a whole.
+ *
+ * `disproof_probe` records what SPECTRA went looking for in order to kill the
+ * claim, and `disproof_searched` whether that search actually ran. A claim
+ * nobody tried to falsify is an assertion, not a finding.
+ */
 export const claimSchema = z.object({
   claim_id: z.string(),
   text: z.string(),
   confidence: z.number(),
-  status: z.string().default('supported'),
-  evidence_ids: z.array(z.string()).default([]),
+  status: claimStatusSchema.default('supported'),
+  supporting_evidence: z.array(z.string()).default([]),
+  contradicting_evidence: z.array(z.string()).default([]),
+  disproof_probe: z.string().nullable().default(null),
+  disproof_searched: z.boolean().default(false),
+  verified: z.boolean().default(false),
+  verification_note: z.string().default(''),
+  rationale: z.string().default(''),
 });
 export type Claim = z.infer<typeof claimSchema>;
 

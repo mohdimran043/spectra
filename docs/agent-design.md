@@ -9,23 +9,23 @@ observes, revises, actively tries to *refute itself*, and knows when to stop —
 ## 1. The loop
 
 ```
-                 ┌──────────────────────────────────────────────┐
-                 ▼                                              │
-  question → understand → plan → select tools → execute ────────┤
-                                                   │            │
-                                              observe            │
-                                                   │            │
-                                    update evidence/entities/graph
-                                                   │            │
-                                        evidence sufficient? ───┘ no
-                                                   │ yes
-                                                   ▼
-              disproof search → contradiction check → verify → synthesise
+                 ┌───────────────────────────────────────────────┐
+                 ▼                                               │
+  question → understand → plan → retrieve → build claims ────────┤
+                                     │                           │
+                          observe; update evidence /             │
+                          entities / graph                       │
+                                     │                           │
+                          evidence sufficient? ──────────────────┘ no
+                                     │ yes
+                                     ▼
+      disproof the leading claim → contradiction check → verify → synthesise
 ```
 
 Iteration is mandatory and real. The Brain replans based on what it actually observed: a database
 hit introduces new entities, which open document and video searches, which surface a contradiction,
-which spawns a new hypothesis, which triggers another retrieval round.
+which changes the status of a claim and sends the Brain back for the retrieval round that settles
+it.
 
 ## 2. State
 
@@ -34,7 +34,7 @@ resumable. Transitions produce **new** objects (`model_copy(update=...)`); nothi
 so a partially-failed iteration can never leave half-applied state.
 
 ```
-goal · intent · mode · plan · hypotheses · entities · evidence(ledger)
+goal · intent · mode · plan · entities · evidence(ledger)
 contradictions · timeline · verification · tool_history · trace
 budget · confidence · answer · answer_status · application_links · claims
 metrics · degraded + reasons · agent_availability
@@ -71,46 +71,66 @@ The Brain uses structured tool calling. Independent retrieval tools run concurre
 `asyncio.gather`; any tool marked `gpu_heavy` is serialised through a single semaphore, because the
 development target has one GPU.
 
-## 5. Hypotheses
+## 5. Claims
 
-For investigation-intent queries the Brain generates **competing** explanations, each with:
+For investigation-intent queries the `claim_builder` agent derives **claims** from the evidence that
+has actually been retrieved, grounded to the investigation's focal entity. A claim is a statement
+the corpus asserts about that entity, not a candidate pulled from a catalogue of plausible causes.
 
 ```
-hypothesis_id · description · rationale · prior · confidence · status
+claim_id · text · confidence · status · rationale
 supporting_evidence[] · contradicting_evidence[]
-predicted_signals[]   ← what evidence should exist if this is true
-disproof_probe        ← what evidence would prove this wrong
-verified · verification_note
+disproof_probe        ← what evidence would show this claim is wrong
+disproof_searched · verified · verification_note
 ```
 
-Status lifecycle:
+Ids are `C1`, `C2`, … within one investigation. `evidence_ids` is the union of the two evidence
+lists; `confidence_label` bands the score. The agent's toggleable flag is `claim`
+(`ENABLE_CLAIM_BUILDER=0`, setting `enable_claim_builder`); disabling it degrades the investigation
+like any other missing agent rather than failing it.
 
-```
-OPEN ──► SUPPORTED     strong corroborated support, no live contradiction
-     ├─► WEAK          some support, thin or non-independent
-     ├─► CONTRADICTED  credible conflicting evidence exists
-     ├─► DISPROVED     disproof probe returned decisive counter-evidence
-     └─► INSUFFICIENT  not enough evidence either way
-```
+Status:
 
-Scoring is a damped Bayesian-flavoured update: prior × supporting weight against contradicting
-weight, damped by **evidence diversity** and count. `predicted_signals` matter: a hypothesis that
-predicts evidence which then fails to appear is penalised, which is how a plausible-but-wrong
-explanation gets demoted rather than merely un-promoted.
+| Status | Meaning |
+|---|---|
+| `supported` | corroborated by independent evidence, nothing credible against it |
+| `weak` | some support, but thin or from a single source |
+| `contradicted` | credible evidence points the other way |
+| `refuted` | the disproof search returned decisive counter-evidence |
+| `insufficient` | not enough evidence either way |
 
-When no generative runtime is available, hypotheses are mined deterministically from the retrieved
+**Each claim is scored on its own evidence alone**: supporting weight, independent-source count and
+**evidence diversity**, minus a contradiction penalty. Claims do not compete and their confidences
+are not normalised, so a well-supported conclusion keeps a high confidence however many other things
+the corpus also says.
+
+That is a correction, and worth stating plainly. SPECTRA previously generated competing explanations
+and normalised their confidences across the candidate set so they summed to about 1. The arithmetic
+punished the case it was meant to serve: a correct conclusion sharing probability mass with six weak
+alternatives peaked near 16%, fell below the sufficiency threshold, and the system abstained on
+questions it had in fact answered correctly. A score divided between candidates measures how many
+alternatives were imagined, not how well the evidence backs the answer. Judging each claim against
+its own evidence measures the thing that matters; the guard against over-confidence is the
+mandatory disconfirming search in §6, not the presence of rivals.
+
+When no generative runtime is available, claims are mined deterministically from the retrieved
 evidence — failure-reason lexicons, incident categories, error codes actually present in the corpus.
-Never a hard-coded list, never a cause the evidence does not mention.
+Never a hard-coded list, never an assertion the evidence does not make.
 
 ## 6. The Disproof Agent — mandatory
 
-For the leading hypothesis the Brain asks: **what evidence would prove this wrong?** It then
-actively searches for it — negation-expanded queries and searches for the competing outcomes, across
-every enabled modality.
+For the leading claim (`state.leading_claim()`) the Brain asks: **what evidence would show this is
+wrong?** It records that as the `disproof_probe` and then actively searches for it: negation-expanded
+queries and searches for the opposite outcome, across every enabled modality.
 
 This is the component that separates investigation from retrieval. A support-only system finds three
 documents agreeing with its first guess and reports 95% confidence. SPECTRA is required to go
 looking for the document that disagrees.
+
+`disproof_searched` records that the search ran, and a claim the probe knocks down becomes `refuted`
+and is dropped from consideration: `leading_claim()` never returns a refuted claim. This is what
+keeps confidence honest now that nothing else competes for it. Confidence is high because the
+counter-evidence was looked for and not found, not because no alternative was offered.
 
 "No conflicting evidence found" is recorded as a real, positive outcome — it is *why* a conclusion
 earns high confidence, not an absence of work.
@@ -143,7 +163,7 @@ deterministic checks stand and the response says so.
 ## 9. Evidence diversity — an explicit first-class quantity
 
 Three paragraphs from one PDF must not outweigh one database record + one PDF + one video. Diversity
-is computed from distinct sources, distinct modalities and distinct assets, and it damps hypothesis
+is computed from distinct sources, distinct modalities and distinct assets, and it damps claim
 confidence directly. Independent corroboration is the thing being measured, not volume.
 
 ## 10. Sufficiency and abstention
@@ -209,7 +229,7 @@ Internal model reasoning is never exposed. Traces stream over SSE and are persis
 
 After an investigation, the full forensic record: sources considered, candidates retrieved, evidence
 used vs rejected (with reasons), tool-call count and breakdown, contradictions, total and per-stage
-latency, models used, GPU peak, hypotheses generated and disproved, and evidence diversity.
+latency, models used, GPU peak, `claims_made` / `claims_refuted`, and evidence diversity.
 
 It exists because "the system found the right answer" is a much weaker claim than "here is exactly
 what the system considered, what it discarded, and why."

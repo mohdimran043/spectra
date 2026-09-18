@@ -15,7 +15,6 @@ import {
   claimSchema,
   contradictionSchema,
   evidenceItemSchema,
-  hypothesisSchema,
   timelineEventSchema,
 } from './evidence';
 
@@ -59,6 +58,8 @@ export const investigationMetricsSchema = z.object({
   evidence_used: z.number().default(0),
   evidence_rejected: z.number().default(0),
   contradictions: z.number().default(0),
+  claims_made: z.number().default(0),
+  claims_refuted: z.number().default(0),
   model_latency_ms: z.record(z.number()).default({}),
   models_used: z.array(z.string()).default([]),
   stage_latency_ms: z.record(z.number()).default({}),
@@ -89,8 +90,8 @@ export const searchAutopsySchema = z.object({
   stage_latency_ms: z.record(z.number()).default({}),
   models_used: z.array(z.string()).default([]),
   gpu_peak_mb: z.number().nullable().default(null),
-  hypotheses_generated: z.number().default(0),
-  hypotheses_disproved: z.number().default(0),
+  claims_made: z.number().default(0),
+  claims_refuted: z.number().default(0),
   evidence_diversity: z.number().default(0),
   degraded: z.boolean().default(false),
   degraded_reasons: z.array(z.string()).default([]),
@@ -116,7 +117,6 @@ export const investigationAnswerSchema = z.object({
   status: answerStatusSchema,
   entities: z.array(answerEntitySchema).default([]),
   evidence: z.array(evidenceItemSchema).default([]),
-  hypotheses: z.array(hypothesisSchema).default([]),
   contradictions: z.array(contradictionSchema).default([]),
   timeline: z.array(timelineEventSchema).default([]),
   claims: z.array(claimSchema).default([]),
@@ -135,6 +135,8 @@ export const investigationAnswerSchema = z.object({
     evidence_used: 0,
     evidence_rejected: 0,
     contradictions: 0,
+    claims_made: 0,
+    claims_refuted: 0,
     model_latency_ms: {},
     models_used: [],
     stage_latency_ms: {},
@@ -189,7 +191,7 @@ export const investigationCaseSchema = z.object({
   updated_at: isoDateTimeSchema.optional(),
   evidence_count: z.number().default(0),
   contradiction_count: z.number().default(0),
-  hypothesis_count: z.number().default(0),
+  claim_count: z.number().default(0),
   confidence: z.number().default(0),
 });
 export type InvestigationCase = z.infer<typeof investigationCaseSchema>;
@@ -198,8 +200,8 @@ export type InvestigationCase = z.infer<typeof investigationCaseSchema>;
  * SSE frames — `GET /api/stream/investigation/{id}`
  * ----------------------------------------------------------------------- */
 
-export const streamHypothesesFrameSchema = z.object({
-  hypotheses: z.array(hypothesisSchema).default([]),
+export const streamClaimsFrameSchema = z.object({
+  claims: z.array(claimSchema).default([]),
 });
 
 export const streamEvidenceFrameSchema = z.object({

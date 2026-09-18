@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from spectra_config import REPO_ROOT, get_settings
 from spectra_config.logging import configure_logging, get_logger

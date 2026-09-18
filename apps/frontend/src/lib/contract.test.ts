@@ -24,6 +24,7 @@ import {
   agentStatusSchema,
   assetSchema,
   canonicalEntitySchema,
+  claimSchema,
   graphViewSchema,
   healthReportSchema,
   ingestJobSchema,
@@ -34,6 +35,27 @@ import {
   sourceHealthSchema,
   traceStepSchema,
 } from './schemas';
+
+/** Every field `InvestigationAnswer` is allowed to put on the wire, and no other. */
+const ANSWER_FIELDS = [
+  'investigation_id',
+  'answer',
+  'confidence',
+  'confidence_label',
+  'status',
+  'entities',
+  'evidence',
+  'contradictions',
+  'timeline',
+  'claims',
+  'application_links',
+  'explanation',
+  'autopsy',
+  'metrics',
+  'degraded',
+  'degraded_reasons',
+  'followups',
+] as const;
 
 describe('API contract', () => {
   it('parses a search response', () => {
@@ -68,17 +90,68 @@ describe('API contract', () => {
     const parsed = investigationAnswerSchema.parse(investigationAnswer);
     expect(parsed.status).toBe('supported');
     expect(parsed.confidence_label).toBe('high');
-    expect(parsed.hypotheses).toHaveLength(2);
+    expect(parsed.claims).toHaveLength(2);
     expect(parsed.evidence).toHaveLength(3);
     expect(parsed.timeline).toHaveLength(2);
     expect(parsed.application_links[0]?.verified_in_database).toBe(true);
   });
 
-  it('exposes the disproof probe on every hypothesis that ran one', () => {
+  it('carries each claim with the evidence for and against it', () => {
     const parsed = investigationAnswerSchema.parse(investigationAnswer);
-    const probed = parsed.hypotheses.filter((h) => h.disproof_searched);
+    const claim = parsed.claims[0];
+    expect(claim?.claim_id).toBeTruthy();
+    expect(claim?.text).toBeTruthy();
+    expect(claim?.status).toBe('supported');
+    expect(claim?.supporting_evidence.length).toBeGreaterThan(0);
+    expect(claim?.contradicting_evidence).toEqual([]);
+    expect(claim?.verified).toBe(true);
+    expect(claim?.verification_note).toBeTruthy();
+  });
+
+  /**
+   * The substantive property of the new contract: a claim is judged on its own
+   * evidence, so confidences are absolute readings and are free to sum past 1.
+   * Anything that rendered them as shares of a whole would be lying.
+   */
+  it('scores claims independently rather than as shares of one total', () => {
+    const parsed = investigationAnswerSchema.parse(investigationAnswer);
+    const total = parsed.claims.reduce((sum, claim) => sum + claim.confidence, 0);
+    expect(parsed.claims.length).toBeGreaterThan(1);
+    expect(total).toBeGreaterThan(1);
+    parsed.claims.forEach((claim) => {
+      expect(claim.confidence).toBeGreaterThanOrEqual(0);
+      expect(claim.confidence).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it('exposes the disproof probe on every claim that ran one', () => {
+    const parsed = investigationAnswerSchema.parse(investigationAnswer);
+    const probed = parsed.claims.filter((claim) => claim.disproof_searched);
     expect(probed.length).toBeGreaterThan(0);
-    probed.forEach((h) => expect(h.disproof_probe).toBeTruthy());
+    probed.forEach((claim) => expect(claim.disproof_probe).toBeTruthy());
+  });
+
+  it('rejects a claim status outside the closed vocabulary', () => {
+    expect(() =>
+      claimSchema.parse({ claim_id: 'C9', text: 'x', confidence: 0.5, status: 'disproved' }),
+    ).toThrow();
+    expect(claimSchema.parse({ claim_id: 'C9', text: 'x', confidence: 0.5 }).status).toBe(
+      'supported',
+    );
+  });
+
+  /**
+   * The answer carries claims and nothing that resurrects the old field of rival
+   * explanations. Asserting the whole key set — rather than the absence of one
+   * name — is what keeps a retired field from creeping back under any spelling.
+   */
+  it('exposes exactly the fields the answer contract declares', () => {
+    const parsed = investigationAnswerSchema.parse({
+      ...investigationAnswer,
+      rival_explanations: [{ id: 'R1', description: 'a field the contract retired' }],
+    });
+    expect(Object.keys(parsed).sort()).toEqual([...ANSWER_FIELDS].sort());
+    expect(parsed.claims).toHaveLength(2);
   });
 
   it('surfaces contradictions with their resolution rather than hiding them', () => {
@@ -92,6 +165,8 @@ describe('API contract', () => {
     const parsed = investigationAnswerSchema.parse(investigationAnswer);
     expect(parsed.autopsy).toBeTruthy();
     expect(parsed.autopsy?.evidence_rejected).toBe(29);
+    expect(parsed.autopsy?.claims_made).toBe(2);
+    expect(parsed.autopsy?.claims_refuted).toBe(0);
     expect(Object.keys(parsed.autopsy?.rejection_reasons ?? {})).not.toHaveLength(0);
   });
 

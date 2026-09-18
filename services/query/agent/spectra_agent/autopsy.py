@@ -6,7 +6,7 @@ computation beyond counting, so what it shows is exactly what happened.
 
 from __future__ import annotations
 
-from spectra_schemas import HypothesisStatus, InvestigationState, SearchAutopsy
+from spectra_schemas import ClaimStatus, InvestigationState, SearchAutopsy
 
 
 class AutopsyBuilder:
@@ -30,11 +30,11 @@ class AutopsyBuilder:
             stage_latency_ms=dict(state.metrics.stage_latency_ms),
             models_used=list(state.metrics.models_used),
             gpu_peak_mb=state.metrics.gpu_peak_mb,
-            hypotheses_generated=len(state.hypotheses),
-            hypotheses_disproved=sum(
+            claims_made=len(state.claims),
+            claims_refuted=sum(
                 1
-                for h in state.hypotheses
-                if h.status in (HypothesisStatus.DISPROVED, HypothesisStatus.CONTRADICTED)
+                for claim in state.claims
+                if claim.status in (ClaimStatus.REFUTED, ClaimStatus.CONTRADICTED)
             ),
             evidence_diversity=state.evidence.diversity(),
             degraded=state.degraded,

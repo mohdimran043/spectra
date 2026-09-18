@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "spectra"
 version = "1.0.0"
-description = "SPECTRA - Hypothesis-Driven Multimodal Enterprise Investigation Agent"
+description = "SPECTRA - Evidence-Grounded Multimodal Enterprise Investigation Agent"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

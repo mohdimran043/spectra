@@ -45,7 +45,7 @@ investigations(investigation_id PK, case_id IDX, goal, mode, status, state JSON,
 
 investigation_cases(case_id PK, title, question, investigation_ids JSON, entity_ids JSON,
                     status, created_at, updated_at, evidence_count, contradiction_count,
-                    hypothesis_count, confidence)
+                    claim_count, confidence)
 
 trace_steps(step_id PK, investigation_id IDX, sequence, agent, tool, status, title,
             input_summary, output_summary, started_at, completed_at, latency_ms,
@@ -89,9 +89,8 @@ tokeniser preserves alphanumeric identifiers intact.
 
 ## Evidence graph
 
-**Node labels (18):** Person · Customer · Transaction · Incident · Event · Document · Page · Image ·
-Video · Scene · Frame · Audio · AudioSegment · DatabaseRecord · ApplicationRecord · Hypothesis ·
-Claim · Evidence
+**Node labels (17):** Person · Customer · Transaction · Incident · Event · Document · Page · Image ·
+Video · Scene · Frame · Audio · AudioSegment · DatabaseRecord · ApplicationRecord · Claim · Evidence
 
 **Relationship types (12):** MENTIONS · REFERS_TO · SAME_ENTITY · SUPPORTS · CONTRADICTS ·
 CAUSED_BY · PRECEDES · SUPERSEDES · DERIVED_FROM · BELONGS_TO · EVIDENCE_FOR · OPENED_AS
@@ -104,7 +103,7 @@ Typical cross-modal shape:
 ```
 (Document)-[:MENTIONS]->(Transaction)<-[:REFERS_TO]-(Scene)-[:BELONGS_TO]->(Video)
 (DatabaseRecord)-[:IS]->(Transaction)-[:CAUSED_BY]->(Incident)
-(Evidence)-[:SUPPORTS|CONTRADICTS]->(Hypothesis)-[:EVIDENCE_FOR]->(Claim)
+(Evidence)-[:SUPPORTS|CONTRADICTS|EVIDENCE_FOR]->(Claim)
 ```
 
 ## Index versioning

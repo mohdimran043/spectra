@@ -122,8 +122,12 @@ export function AutopsyDivision({ investigationId }: { investigationId: string }
                 value={String(autopsy.contradictions)}
                 tone={autopsy.contradictions > 0 ? 'text-stamp font-semibold' : undefined}
               />
-              <Reading label="Hypotheses generated" value={String(autopsy.hypotheses_generated)} />
-              <Reading label="Hypotheses disproved" value={String(autopsy.hypotheses_disproved)} />
+              <Reading label="Claims made" value={String(autopsy.claims_made)} />
+              <Reading
+                label="Claims refuted"
+                value={String(autopsy.claims_refuted)}
+                tone={autopsy.claims_refuted > 0 ? 'text-caution' : undefined}
+              />
               <Reading label="GPU peak" value={formatMegabytes(autopsy.gpu_peak_mb)} />
               <Reading label="Sources considered" value={String(autopsy.sources_considered.length)} />
             </div>

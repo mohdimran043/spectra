@@ -32,7 +32,7 @@ ROLE_LABEL = {
 }
 ROLE_ORDER = tuple(ROLE_LABEL)
 ROLE_PURPOSE = {
-    "deep_brain": "Planning, hypotheses, synthesis",
+    "deep_brain": "Planning, claims, synthesis",
     "fast_brain": "Routing, classification, cheap answers",
     "vision": "Captioning images and keyframes",
     "embedding": "Dense text retrieval",

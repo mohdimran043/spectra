@@ -129,7 +129,7 @@ class Sheet:
     ) -> None:
         x, y = origin
         cursor = x
-        for header, width in zip(headers, widths):
+        for header, width in zip(headers, widths, strict=True):
             self.text((cursor, y), header, size=SMALL_SIZE, colour=MUTED, bold=True, role="header")
             cursor += width
         for index, row in enumerate(rows):
@@ -139,7 +139,7 @@ class Sheet:
                     (x - 8, top - 6, x + sum(widths) + 8, top + ROW_HEIGHT - 10), fill=(58, 30, 34)
                 )
             cursor = x
-            for value, width in zip(row, widths):
+            for value, width in zip(row, widths, strict=False):
                 colour = DANGER if value in {"failed", "FAILED", "DECLINED"} else TEXT
                 self.text((cursor, top), value, size=SMALL_SIZE, colour=colour, mono=True, role="cell")
                 cursor += width

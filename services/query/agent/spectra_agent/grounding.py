@@ -4,12 +4,19 @@ The only sentences allowed to carry no citation are *procedural* ones - the
 statements SPECTRA makes about its own search ("Insufficient evidence...",
 section headings, "Not found: ...").  Everything else is a claim about the
 world and must point at an EvidenceItem.
+
+The second half of the law is *subject* grounding: a claim about TX83155 has to
+rest on evidence that names TX83155.  :func:`focal_terms` is what the evidence
+admission gate and the claim builder both measure that against, so the two
+agree on what the investigation is actually about.
 """
 
 from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+
+from spectra_schemas import InvestigationState
 
 CITATION = re.compile(r"\[E(\d+)\]")
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
@@ -73,3 +80,18 @@ def unsupported_sentences(text: str, labels: Mapping[str, str]) -> list[str]:
         for sentence in split_sentences(text)
         if not is_procedural(sentence) and not cited_labels(sentence, labels)
     ]
+
+
+def focal_terms(state: InvestigationState) -> list[str]:
+    """The identifiers this investigation is actually about, lower-cased.
+
+    Built from the detected identifiers first and the resolved entities second,
+    so an empty list genuinely means "this question names no subject" rather
+    than "the subject has not been resolved yet".
+    """
+    terms: list[str] = []
+    understanding = state.understanding
+    if understanding:
+        terms.extend(understanding.detected_ids)
+    terms.extend(state.entities)
+    return [t.strip().lower() for t in terms if t and str(t).strip()]

@@ -10,11 +10,10 @@ from __future__ import annotations
 
 from spectra_schemas import EvidenceItem, EvidenceStance
 
-# The causal lexicon belongs to the Hypothesis Engine, but stance is not that
-# agent's: the Brain stances its supporting evidence, the Disproof Agent stances
-# what it finds, and the Verifier reads the result.  It therefore stays a
-# package-root primitive rather than moving into any one agent's package.
-from .agents.hypothesis.causal_lexicon import competing_outcomes, negate, salient_terms
+# Stance belongs to no single agent - the Brain stances its supporting evidence,
+# the Disproof Agent stances what it finds and the Verifier reads the result -
+# so it stays a package-root primitive beside the lexicon it reads.
+from .causal_lexicon import competing_outcomes, negate, salient_terms
 
 # An item must share at least one salient term with the claim before its stance
 # means anything; otherwise it is simply about something else.

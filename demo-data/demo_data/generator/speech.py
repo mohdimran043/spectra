@@ -12,9 +12,10 @@ from __future__ import annotations
 
 import json
 import wave
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Sequence
+from typing import Final
 
 import numpy as np
 

@@ -23,9 +23,9 @@ from spectra_schemas import (
     VerificationResult,
 )
 
+from ...causal_lexicon import salient_terms
 from ...llm import structured, text_messages
 from ...thresholds import MIN_DIVERSITY, MIN_INDEPENDENT_SOURCES
-from ..hypothesis.causal_lexicon import salient_terms
 
 log = get_logger(__name__)
 

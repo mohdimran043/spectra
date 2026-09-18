@@ -1,7 +1,7 @@
-"""Entity grounding: evidence and hypotheses must be about the investigated subject.
+"""Entity grounding: evidence and claims must be about the investigated subject.
 
 Without these gates, generic text retrieved from the same document seeds
-plausible-but-unfounded explanations and, being plentiful, outweighs the one
+plausible-but-unfounded claims and, being plentiful, outweighs the one
 passage that actually names the entity.
 """
 

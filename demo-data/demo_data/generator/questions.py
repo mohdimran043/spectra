@@ -8,16 +8,17 @@ generated.  A broken suite fails the generator rather than the benchmark run.
 
 from __future__ import annotations
 
-from typing import Final, Sequence
+from collections.abc import Sequence
+from typing import Final
 
 from spectra_config.logging import get_logger
 
 from .expected import CorpusIndex, ExpectedQuestion
 from .questions_reasoning import (
     abstention,
+    claim_verification,
     contradiction,
     entity_resolution,
-    claim_verification,
     multi_hop,
     sufficiency,
     temporal,

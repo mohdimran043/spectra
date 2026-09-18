@@ -13,24 +13,7 @@ import { queryKeys } from '@/lib/query-keys';
 import type { AgentStatusRow } from '@/lib/schemas/system';
 import type { StatusTone } from '@/lib/vocab';
 import { useSession } from '@/features/shell/session-context';
-import { AgentGlyph } from '@/features/investigation/agent-glyph';
-import type { AgentName } from '@/lib/schemas/primitives';
-
-const KNOWN_AGENTS = new Set<string>([
-  'brain',
-  'document_agent',
-  'vision_agent',
-  'video_agent',
-  'audio_agent',
-  'database_agent',
-  'graph_agent',
-  'entity_resolver',
-  'hypothesis_engine',
-  'disproof_agent',
-  'verifier',
-  'timeline_builder',
-  'contradiction_radar',
-]);
+import { AgentGlyph, resolveAgentName } from '@/features/investigation/agent-glyph';
 
 function stateTone(agent: AgentStatusRow): StatusTone {
   if (!agent.enabled) return 'quiet';
@@ -60,7 +43,7 @@ function AgentCard({ agent }: { agent: AgentStatusRow }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.agents }),
   });
 
-  const glyphName = KNOWN_AGENTS.has(agent.name) ? (agent.name as AgentName) : null;
+  const glyphName = resolveAgentName(agent.name);
   const off = !agent.enabled;
 
   return (

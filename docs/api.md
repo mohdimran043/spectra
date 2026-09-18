@@ -132,31 +132,93 @@ Returns `202` + `{"investigation_id":"inv_...","case_id":"case_...","status":"ru
 
 ### `GET /api/investigations/{id}` — `InvestigationAnswer` (the structured response contract):
 ```json
-{"investigation_id":"inv_...","answer":"...","confidence":0.94,"confidence_label":"high",
- "status":"supported|partially_supported|contested|insufficient_evidence|degraded|failed",
- "entities":[{"entity_id":"...","entity_type":"transaction","canonical_name":"TX82931","aliases":[...]}],
- "evidence":[{"evidence_id":"evd_...","kind":"document","modality":"document","summary":"...",
-              "excerpt":"...","stance":"supporting","relevance":0.91,"reliability":0.75,
-              "reliability_reason":"...","citation":"Document: DOC9182 | Page: 14",
-              "provenance":{...},"occurred_at":"..."}],
- "hypotheses":[{"hypothesis_id":"H1","description":"Authentication timeout","status":"supported",
-                "confidence":0.92,"supporting_evidence":["evd_..."],"contradicting_evidence":[],
-                "disproof_probe":"...","disproof_searched":true,"verified":true}],
- "contradictions":[{"contradiction_id":"...","statement":"...","evidence_a":"evd_1","evidence_b":"evd_2",
-                    "kind":"value_conflict","detail":"...","resolution":"...","severity":0.6}],
- "timeline":[{"event_id":"...","occurred_at":"...","label":"Transaction created","modality":"database",
-              "evidence_ids":[...],"precision":"exact"}],
- "claims":[{"claim_id":"...","text":"...","confidence":0.94,"evidence_ids":["evd_..."]}],
- "application_links":[{"entity_id":"...","entity_type":"transaction","label":"Open Transaction",
-                       "url":"http://localhost:3001/transactions/TX82931","record_id":"TX82931",
-                       "verified_in_database":true}],
- "explanation":{"reasons":["The query referenced a transaction ID, so Database Search was selected first."],
-                "sources_selected":["src_enterprise","src_docs"],
-                "sources_skipped":[{"source":"src_images","reason":"vision agent disabled"}]},
- "autopsy":{...SearchAutopsy...},
- "metrics":{...InvestigationMetrics...},
- "degraded":false,"degraded_reasons":[],"followups":["..."]}
+{"investigation_id": "inv_abc123",
+ "answer": "Transaction TX82931 failed because the authentication service timed out [E1][E2].",
+ "confidence": 0.94,
+ "confidence_label": "high",
+ "status": "supported",
+ "entities": [{"entity_id": "ent_transaction_ab12", "entity_type": "transaction",
+               "canonical_name": "TX82931", "aliases": ["Txn 82931"]}],
+ "evidence": [{"evidence_id": "evd_1", "label": "E1", "kind": "database", "modality": "database",
+               "summary": "The authentication service connection pool was exhausted at 10:42.",
+               "excerpt": "...connection pool was exhausted at 10:42, so the charge failed.",
+               "stance": "supporting", "relevance": 0.91, "reliability": 0.75, "weight": 0.6825,
+               "reliability_reason": "Database record, names TX82931 explicitly, corroborated by 2 sources",
+               "citation": "Document: DOC9182 | Page: 14 | Section: Authentication",
+               "claim_ids": ["C1", "C2"],
+               "entities": ["ent_transaction_ab12"],
+               "provenance": {"source_id": "src_docs", "source_name": "Corporate Documents",
+                              "modality": "document", "version": "2", "version_status": "approved",
+                              "object_uri": "spectra://objects/ab/abc123.pdf",
+                              "locator": {"kind": "document", "document_id": "DOC9182",
+                                          "page": 14, "section": "Authentication"},
+                              "index_version": "idx_0001", "created_at": "2026-03-11T10:42:01Z"},
+               "occurred_at": "2026-03-11T10:42:01Z", "retrieved_by": "search_documents"}],
+ "contradictions": [{"contradiction_id": "con_1", "entity_id": "ent_incident_1",
+                     "statement": "INC1829 status is reported as both 'approved' and 'rejected'",
+                     "evidence_a": "evd_2", "evidence_b": "evd_3", "kind": "value_conflict",
+                     "detail": "The superseded draft says rejected; the approved v2 says approved.",
+                     "resolution": "Resolved in favour of evd_2: approved beats superseded.",
+                     "resolved_in_favour_of": "evd_2", "severity": 0.7}],
+ "timeline": [{"event_id": "evt_1", "occurred_at": "2026-03-11T10:42:01Z",
+               "label": "Transaction created", "modality": "database",
+               "evidence_ids": ["evd_1"], "precision": "exact"}],
+ "claims": [{"claim_id": "C1",
+             "text": "The authentication service timed out, so TX82931 failed.",
+             "confidence": 0.94, "status": "supported",
+             "supporting_evidence": ["evd_1", "evd_2"], "contradicting_evidence": [],
+             "disproof_probe": "A successful authentication call for TX82931 inside the failure window.",
+             "disproof_searched": true, "verified": true,
+             "verification_note": "Two independent sources; no unresolved contradiction.",
+             "rationale": "The failure_reason field and the post-mortem agree."},
+            {"claim_id": "C2", "text": "No fraud rule fired for TX82931.",
+             "confidence": 0.58, "status": "weak",
+             "supporting_evidence": ["evd_1"], "contradicting_evidence": [],
+             "disproof_probe": "A fraud-service decision log showing a rule match for TX82931.",
+             "disproof_searched": true, "verified": true,
+             "verification_note": "One source only; no independent corroboration found.",
+             "rationale": "Absence of a rule-match row in the only log that would carry one."}],
+ "application_links": [{"entity_id": "ent_transaction_ab12", "entity_type": "transaction",
+                        "label": "Open Transaction", "record_id": "TX82931",
+                        "url": "http://localhost:3001/transactions/TX82931",
+                        "verified_in_database": true}],
+ "explanation": {"reasons": ["The query referenced a transaction ID, so Database Search was selected first."],
+                 "sources_selected": ["src_enterprise", "src_docs"],
+                 "sources_skipped": [{"source": "src_images", "reason": "vision agent disabled"}]},
+ "autopsy": {"investigation_id": "inv_abc123",
+             "sources_considered": ["src_enterprise", "src_docs", "src_media"],
+             "candidates_retrieved": 184, "evidence_used": 3, "evidence_rejected": 29,
+             "rejection_reasons": {"below relevance floor": 24, "permission denied": 5},
+             "tool_calls": 18, "tool_breakdown": {"search_documents": 6, "query_database": 3},
+             "contradictions": 1, "total_latency_ms": 8400.0,
+             "stage_latency_ms": {"candidate_generation": 31.2, "rerank": 88.0},
+             "models_used": ["ollama/qwen3:30b-a3b", "transformers/BAAI/bge-m3"],
+             "gpu_peak_mb": null,
+             "claims_made": 2, "claims_refuted": 0, "evidence_diversity": 0.95,
+             "degraded": false, "degraded_reasons": []},
+ "metrics": {"total_latency_ms": 8400.0, "tool_calls": 18, "iterations": 3,
+             "candidates_retrieved": 184, "evidence_used": 3, "evidence_rejected": 29,
+             "contradictions": 1, "model_latency_ms": {"deep_brain": 5270.0},
+             "models_used": ["ollama/qwen3:30b-a3b"], "stage_latency_ms": {"rerank": 88.0},
+             "gpu_peak_mb": null, "tokens": {"deep_brain": 512},
+             "sources_considered": ["src_enterprise", "src_docs", "src_media"]},
+ "degraded": false, "degraded_reasons": [], "followups": ["Who approved INC1829?"]}
 ```
+
+Enumerations in that payload:
+
+| Field | Values |
+|---|---|
+| `status` | `supported` · `partially_supported` · `contested` · `insufficient_evidence` · `degraded` · `failed` |
+| `confidence_label` | `high` · `medium` · `low` · `insufficient` |
+| `claims[].status` | `supported` · `weak` · `contradicted` · `refuted` · `insufficient` |
+| `evidence[].stance` | `supporting` · `contradicting` · `neutral` |
+
+Claim ids are `C1`, `C2`, … within one investigation. Each claim is scored on its own evidence, so
+the confidences do not sum to anything in particular; `claims` is ordered by confidence and the
+first live (non-`refuted`) entry is the leading claim the answer is built around. `evidence_ids` and
+`confidence_label` on a claim are derived properties and are not serialised: the two evidence lists
+and `confidence` carry the same information.
 
 ### `GET /api/investigations` — recent investigations (summary rows).
 ### `POST /api/investigations/{id}/continue` — `{"question":"...","stream":true}` resumes persisted state.
@@ -172,8 +234,8 @@ data: {"step_id":"...","sequence":3,"agent":"database_agent","tool":"query_datab
        "status":"ok","title":"Database Agent","input_summary":"transaction TX82931",
        "output_summary":"1 record found","latency_ms":12.4,"evidence_ids":["evd_..."]}
 
-event: hypotheses
-data: {"hypotheses":[...]}
+event: claims
+data: {"claims":[...]}
 
 event: evidence
 data: {"evidence":[...]}

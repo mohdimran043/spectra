@@ -21,7 +21,7 @@ from spectra_schemas import (
 )
 
 from . import sufficiency
-from .agents.hypothesis import focal_terms
+from .grounding import focal_terms
 
 
 def _now() -> datetime:
@@ -140,7 +140,7 @@ def with_plan(state: InvestigationState, entries: Sequence[str]) -> Investigatio
 def with_updated_evidence(
     state: InvestigationState, items: Sequence[EvidenceItem]
 ) -> InvestigationState:
-    """Merge stance / hypothesis-link updates for evidence already in the ledger."""
+    """Merge stance / claim-link updates for evidence already in the ledger."""
     if not items:
         return state
     replacements = {item.evidence_id: item for item in items}

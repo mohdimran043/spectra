@@ -10,9 +10,10 @@ the pixels instead.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Final
+from typing import Final
 
 from spectra_config.logging import get_logger
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import { Mark, StatusChip } from '@/components/chip';
+import { StatusChip } from '@/components/chip';
 import { cn } from '@/components/cn';
 import { IconLinkOut, IconWarning } from '@/components/icons';
 import { Leaf, LeafHead, Reading, Rule } from '@/components/leaf';
@@ -12,6 +12,8 @@ import type { InvestigationAnswer } from '@/lib/schemas/investigation';
 import {
   ANSWER_STATUS_LABEL,
   ANSWER_STATUS_TONE,
+  CLAIM_STATUS_LABEL,
+  CLAIM_STATUS_TONE,
   CONFIDENCE_LABEL_TEXT,
   CONFIDENCE_TONE,
 } from '@/lib/vocab';
@@ -50,7 +52,7 @@ function Abstention({ answer }: { answer: InvestigationAnswer }) {
           />
           <Reading label="Evidence gathered" value={String(answer.evidence.length)} />
           <Reading label="Independent sources" value={String(independentSourceCount(answer))} />
-          <Reading label="Hypotheses tested" value={String(answer.hypotheses.length)} />
+          <Reading label="Claims tested" value={String(answer.claims.length)} />
         </div>
         {answer.followups.length > 0 && (
           <div>
@@ -128,17 +130,28 @@ export function Conclusion({ answer }: { answer: InvestigationAnswer }) {
               <p className="text-micro font-semibold uppercase tracking-[0.08em] text-ink-1">
                 Claims and their exhibits
               </p>
+              <p className="mt-0.5 text-micro text-ink-2">
+                Each figure is that claim&rsquo;s own confidence, not its share of the answer.
+              </p>
               <ul className="mt-1.5 flex flex-col gap-1.5">
-                {answer.claims.map((claim) => (
-                  <li key={claim.claim_id} className="flex flex-wrap items-baseline gap-2">
-                    <span className="min-w-0 flex-1 text-body text-ink">{claim.text}</span>
-                    <Mark mono>{formatScore(claim.confidence)}</Mark>
-                    <span className="font-mono text-micro tabular text-ink-2">
-                      {claim.evidence_ids.length} exhibit
-                      {claim.evidence_ids.length === 1 ? '' : 's'}
-                    </span>
-                  </li>
-                ))}
+                {answer.claims.map((claim) => {
+                  const exhibits =
+                    claim.supporting_evidence.length + claim.contradicting_evidence.length;
+                  return (
+                    <li key={claim.claim_id} className="flex flex-wrap items-baseline gap-2">
+                      <span className="min-w-0 flex-1 text-body text-ink">{claim.text}</span>
+                      <StatusChip tone={CLAIM_STATUS_TONE[claim.status]}>
+                        {CLAIM_STATUS_LABEL[claim.status]}
+                      </StatusChip>
+                      <span className="font-mono text-mark tabular text-ink-1">
+                        {formatScore(claim.confidence)}
+                      </span>
+                      <span className="font-mono text-micro tabular text-ink-2">
+                        {exhibits} exhibit{exhibits === 1 ? '' : 's'}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </>

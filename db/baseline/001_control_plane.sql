@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS investigation_cases (
     updated_at          timestamptz NOT NULL DEFAULT now(),
     evidence_count      integer     NOT NULL DEFAULT 0,
     contradiction_count integer     NOT NULL DEFAULT 0,
-    hypothesis_count    integer     NOT NULL DEFAULT 0,
+    claim_count         integer     NOT NULL DEFAULT 0,
     confidence          double precision NOT NULL DEFAULT 0.0
         CHECK (confidence >= 0 AND confidence <= 1)
 );

@@ -12,6 +12,8 @@
   ],
   "autopsy": {
     "candidates_retrieved": 184,
+    "claims_made": 2,
+    "claims_refuted": 0,
     "contradictions": 1,
     "degraded": false,
     "degraded_reasons": [],
@@ -19,8 +21,6 @@
     "evidence_rejected": 29,
     "evidence_used": 3,
     "gpu_peak_mb": null,
-    "hypotheses_disproved": 1,
-    "hypotheses_generated": 4,
     "investigation_id": "inv_abc123",
     "models_used": [
       "ollama/qwen3:30b-a3b",
@@ -48,14 +48,35 @@
   },
   "claims": [
     {
-      "claim_id": "clm_1",
+      "claim_id": "C1",
       "confidence": 0.94,
-      "evidence_ids": [
+      "contradicting_evidence": [],
+      "disproof_probe": "A successful authentication call for TX82931 inside the failure window.",
+      "disproof_searched": true,
+      "rationale": "The failure_reason field and the post-mortem agree.",
+      "status": "supported",
+      "supporting_evidence": [
         "evd_1",
         "evd_2"
       ],
+      "text": "The authentication service timed out, so TX82931 failed.",
+      "verification_note": "Two independent sources; no unresolved contradiction.",
+      "verified": true
+    },
+    {
+      "claim_id": "C2",
+      "confidence": 0.71,
+      "contradicting_evidence": [],
+      "disproof_probe": "A fraud-service decision log showing a rule match for TX82931.",
+      "disproof_searched": true,
+      "rationale": "",
       "status": "supported",
-      "text": "Authentication timeout caused the failure"
+      "supporting_evidence": [
+        "evd_1"
+      ],
+      "text": "No fraud rule fired for TX82931.",
+      "verification_note": "",
+      "verified": true
     }
   ],
   "confidence": 0.94,
@@ -89,12 +110,12 @@
   "evidence": [
     {
       "citation": "Document: DOC9182 | Page: 14 | Section: Authentication",
+      "claim_ids": [],
       "entities": [
         "ent_transaction_ab12"
       ],
       "evidence_id": "evd_1",
       "excerpt": "...connection pool was exhausted at 10:42, so the charge failed.",
-      "hypothesis_ids": [],
       "kind": "database",
       "label": "E1",
       "modality": "database",
@@ -125,7 +146,7 @@
       "relevance": 0.91,
       "reliability": 0.75,
       "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
-      "retrieved_at": "2026-09-18T07:25:02.574306Z",
+      "retrieved_at": "2026-09-18T09:08:02.256907Z",
       "retrieved_by": "search_documents",
       "stance": "supporting",
       "summary": "The authentication service connection pool was exhausted at 10:42.",
@@ -133,12 +154,12 @@
     },
     {
       "citation": "Document: DOC9182 | Page: 14 | Section: Authentication",
+      "claim_ids": [],
       "entities": [
         "ent_transaction_ab12"
       ],
       "evidence_id": "evd_2",
       "excerpt": "...connection pool was exhausted at 10:42, so the charge failed.",
-      "hypothesis_ids": [],
       "kind": "document",
       "label": "E2",
       "modality": "document",
@@ -169,7 +190,7 @@
       "relevance": 0.91,
       "reliability": 0.75,
       "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
-      "retrieved_at": "2026-09-18T07:25:02.574341Z",
+      "retrieved_at": "2026-09-18T09:08:02.256920Z",
       "retrieved_by": "search_documents",
       "stance": "supporting",
       "summary": "The authentication service connection pool was exhausted at 10:42.",
@@ -177,12 +198,12 @@
     },
     {
       "citation": "Document: DOC9182 | Page: 14 | Section: Authentication",
+      "claim_ids": [],
       "entities": [
         "ent_transaction_ab12"
       ],
       "evidence_id": "evd_3",
       "excerpt": "...connection pool was exhausted at 10:42, so the charge failed.",
-      "hypothesis_ids": [],
       "kind": "video",
       "label": "E3",
       "modality": "video",
@@ -213,7 +234,7 @@
       "relevance": 0.91,
       "reliability": 0.75,
       "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
-      "retrieved_at": "2026-09-18T07:25:02.574351Z",
+      "retrieved_at": "2026-09-18T09:08:02.256930Z",
       "retrieved_by": "search_documents",
       "stance": "neutral",
       "summary": "The authentication service connection pool was exhausted at 10:42.",
@@ -238,48 +259,11 @@
   "followups": [
     "Which other transactions hit the same incident?"
   ],
-  "hypotheses": [
-    {
-      "confidence": 0.92,
-      "contradicting_evidence": [],
-      "description": "Authentication timeout",
-      "disproof_probe": "A successful auth call for TX82931 within the failure window.",
-      "disproof_searched": true,
-      "hypothesis_id": "H1",
-      "predicted_signals": [
-        "auth_timeout in the transaction record"
-      ],
-      "prior": 0.25,
-      "rationale": "The failure_reason field and the post-mortem agree.",
-      "status": "supported",
-      "supporting_evidence": [
-        "evd_1",
-        "evd_2"
-      ],
-      "verification_note": "Two independent sources; no unresolved contradiction.",
-      "verified": true
-    },
-    {
-      "confidence": 0.04,
-      "contradicting_evidence": [
-        "evd_1"
-      ],
-      "description": "Fraud-rule rejection",
-      "disproof_probe": "A fraud rule firing for TX82931.",
-      "disproof_searched": true,
-      "hypothesis_id": "H2",
-      "predicted_signals": [],
-      "prior": 0.25,
-      "rationale": "",
-      "status": "disproved",
-      "supporting_evidence": [],
-      "verification_note": "",
-      "verified": false
-    }
-  ],
   "investigation_id": "inv_abc123",
   "metrics": {
     "candidates_retrieved": 184,
+    "claims_made": 2,
+    "claims_refuted": 0,
     "contradictions": 1,
     "evidence_rejected": 29,
     "evidence_used": 3,

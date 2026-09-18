@@ -1,9 +1,9 @@
 import type {
   AgentName,
   AnswerStatus,
+  ClaimStatus,
   ConfidenceLabel,
   EvidenceStance,
-  HypothesisStatus,
   JobStatus,
   Modality,
   ModelState,
@@ -41,31 +41,34 @@ export const MODALITY_VAR: Record<Modality, string> = {
   external: '--mod-external',
 };
 
-export const HYPOTHESIS_STATUS_LABEL: Record<HypothesisStatus, string> = {
-  open: 'OPEN',
+export const CLAIM_STATUS_LABEL: Record<ClaimStatus, string> = {
   supported: 'SUPPORTED',
   weak: 'WEAK',
   contradicted: 'CONTRADICTED',
-  disproved: 'DISPROVED',
+  refuted: 'REFUTED',
   insufficient: 'INSUFFICIENT',
 };
 
-export const HYPOTHESIS_STATUS_TONE: Record<HypothesisStatus, StatusTone> = {
-  open: 'held',
+export const CLAIM_STATUS_TONE: Record<ClaimStatus, StatusTone> = {
   supported: 'seal',
   weak: 'caution',
   contradicted: 'stamp',
-  disproved: 'stamp',
+  refuted: 'stamp',
   insufficient: 'quiet',
 };
 
-export const HYPOTHESIS_STATUS_MEANING: Record<HypothesisStatus, string> = {
-  open: 'Still live. Neither confirmed nor ruled out by the evidence gathered so far.',
-  supported: 'Corroborated by evidence, and the disproof probe found nothing that refutes it.',
+/**
+ * Each meaning is written about one statement alone. No status here describes a
+ * ranking, because a claim is never judged against a rival claim — only against
+ * the evidence found for and against it.
+ */
+export const CLAIM_STATUS_MEANING: Record<ClaimStatus, string> = {
+  supported:
+    'Carried by its own evidence, and the disproof probe found nothing that overturns it.',
   weak: 'Some support, but not enough independent corroboration to rely on.',
-  contradicted: 'At least one piece of evidence directly conflicts with this explanation.',
-  disproved: 'The disproof probe found evidence that rules this explanation out.',
-  insufficient: 'Not enough evidence was found either way to judge this explanation.',
+  contradicted: 'At least one exhibit on the record directly conflicts with this statement.',
+  refuted: 'The disproof probe found what it was looking for. This statement is ruled out.',
+  insufficient: 'Not enough evidence was found either way to judge this statement.',
 };
 
 export const STANCE_LABEL: Record<EvidenceStance, string> = {
@@ -200,7 +203,7 @@ export const AGENT_LABEL: Record<AgentName, string> = {
   database_agent: 'Database Agent',
   graph_agent: 'Knowledge Graph Agent',
   entity_resolver: 'Entity Resolver',
-  hypothesis_engine: 'Hypothesis Engine',
+  claim_builder: 'Claim Builder',
   disproof_agent: 'Disproof Agent',
   verifier: 'Verifier',
   timeline_builder: 'Timeline Builder',

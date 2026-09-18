@@ -54,11 +54,11 @@ resolved entities.
 
 > Investigate why this transaction failed and show me the supporting evidence.
 
-The full pipeline: plan → multi-modal retrieval → entity resolution → hypotheses → support search →
+The full pipeline: plan → multi-modal retrieval → entity resolution → claims → support search →
 **disproof search** → contradiction check → verification → timeline → cited answer → application links.
 
 **Watch for:** the Disproof Agent explicitly searching for evidence that would refute the leading
-hypothesis, and reporting "no conflicting evidence found" as a positive result.
+claim, and reporting "no conflicting evidence found" as a positive result.
 
 ## Scenario 5 — Contradiction
 
@@ -80,7 +80,7 @@ ordered timeline.
 
 | # | Scenario | Demonstrates |
 |---|---|---|
-| 1 | Upload a screenshot with a transaction id, then "Investigate why this transaction failed and show me the supporting evidence." | the full image→OCR→entity→DB→documents→video→hypotheses→disproof→verify→timeline→answer→links journey |
+| 1 | Upload a screenshot with a transaction id, then "Investigate why this transaction failed and show me the supporting evidence." | the full image→OCR→entity→DB→documents→video→claims→disproof→verify→timeline→answer→links journey |
 | 2 | "Find where the architecture change was discussed." | query→video→transcript→timestamp→frame→related document |
 | 3 | "Which customers mentioned in the engineering meeting had more than five failed payments?" | video→entity extraction→SQL aggregation→application links |
 | 4 | "The sources disagree about whether the incident was approved. Investigate." | contradiction detection, version/timestamp analysis, reliability adjudication |

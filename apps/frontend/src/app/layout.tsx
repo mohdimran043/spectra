@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: '%s · SPECTRA',
   },
   description:
-    'Enterprise investigation console: cross-modal retrieval, competing hypotheses tested against disproof, and every fact openable at its source.',
+    'Enterprise investigation console: cross-modal retrieval, claims tested against their own disproof probes, and every fact openable at its source.',
   applicationName: 'SPECTRA',
   robots: { index: false, follow: false },
 };

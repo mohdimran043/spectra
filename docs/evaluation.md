@@ -7,7 +7,7 @@ architectural claim can be measured and ablated against the same corpus.
 
 1. cross-modal entity resolution
 2. evidence-centric investigation
-3. hypothesis-driven retrieval
+3. evidence-grounded claim construction
 4. disconfirming-evidence search
 5. contradiction-aware reasoning
 6. temporal evidence reasoning
@@ -24,12 +24,12 @@ Five strategies over the identical index, behind one `Baseline` interface:
 |---|---|---|
 | **A — BM25** | lexical retrieval only | semantics, multimodality, agency |
 | **B — Vector RAG** | dense retrieval + concatenation | lexical precision on ids, agency |
-| **C — Multimodal RAG** | dense + multimodal retrieval | agency, hypotheses, verification |
-| **D — Agentic retrieval** | tool-using iterative loop | hypotheses, disproof, verification |
-| **E — SPECTRA** | full hypothesis-driven investigation | — |
+| **C — Multimodal RAG** | dense + multimodal retrieval | agency, claims, verification |
+| **D — Agentic retrieval** | tool-using iterative loop | claims, disproof, verification |
+| **E — SPECTRA** | full evidence-grounded investigation | — |
 
-D→E is the interesting comparison: it isolates the contribution of hypotheses, disconfirming search
-and verification from the contribution of merely being agentic.
+D→E is the interesting comparison: it isolates the contribution of evidence-grounded claims,
+disconfirming search and verification from the contribution of merely being agentic.
 
 ## Benchmark categories
 
@@ -39,7 +39,7 @@ Three or more questions each, all with ground truth in `demo-data/expected/`:
 single-source retrieval · cross-document retrieval · image retrieval · video retrieval
 audio retrieval · database reasoning · image→DB · DB→video · video→document
 entity resolution · multi-hop investigation · temporal reasoning
-contradiction detection · hypothesis testing · evidence sufficiency · abstention
+contradiction detection · claim verification · evidence sufficiency · abstention
 ```
 
 The abstention category matters most and is the easiest to omit: questions whose *correct* answer is
@@ -55,7 +55,9 @@ The abstention category matters most and is the easiest to omit: questions whose
 answer claims with a valid citation), evidence diversity.
 
 **Reasoning** — contradiction-detection precision/recall, investigation success (conclusion match +
-status match), hypothesis ranking accuracy.
+status match), and leading-claim accuracy: whether the highest-confidence claim is the one the
+ground truth names. Because claims are scored independently rather than against each other, this
+measures whether the evidence backing is right, not whether the ranking arithmetic is.
 
 **Calibration** — abstention correctness, split into *correctly abstained*, *wrongly abstained* and
 *wrongly answered*. The last is the dangerous one.

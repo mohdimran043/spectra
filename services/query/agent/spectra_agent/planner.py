@@ -171,13 +171,13 @@ def replan(state: InvestigationState, available: Collection[str]) -> list[Planne
             )
         )
 
-    leader = state.leading_hypothesis()
+    leader = state.leading_claim()
     if leader is not None and len(leader.supporting_evidence) < MIN_SUPPORTING_ITEMS:
         calls.append(
             PlannedCall(
                 "search_supporting_evidence",
-                {"claim": leader.description, "top_k": DEEP_TOP_K},
-                f"{leader.hypothesis_id} needs independent corroboration before it can be asserted",
+                {"claim": leader.text, "top_k": DEEP_TOP_K},
+                f"{leader.claim_id} needs independent corroboration before it can be asserted",
             )
         )
 

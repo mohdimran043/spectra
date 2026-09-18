@@ -89,8 +89,8 @@ def _bridge_turns(world: World) -> tuple[tuple[str, str], ...]:
         (cast.fraud_analyst.speaker,
          f"First theory is the fraud rule we shipped last night. {FRAUD_SERVICE} is the obvious suspect."),
         (cast.reliability_engineer.speaker,
-         f"Second theory is the transit packet loss, but that was three days ago and the counters are "
-         f"clean tonight."),
+         "Second theory is the transit packet loss, but that was three days ago and the counters are "
+         "clean tonight."),
         (cast.payments_engineer.speaker,
          "Third theory from support is an insufficient balance. The account has eighteen thousand "
          "available, so that is not it."),

@@ -33,15 +33,16 @@ run SQL, view autopsy, export), `viewer` (may search and view autopsy only).
 
 SPECTRA answers investigative questions across documents, images, video, audio, databases and a
 knowledge graph at once, and shows its work. Success is not "the model produced fluent text" —
-success is that every asserted fact carries an openable citation, that competing explanations
-were tested rather than assumed, that contradictions were surfaced rather than smoothed over,
-and that the system abstains out loud when the evidence does not support an answer.
+success is that every asserted fact carries an openable citation, that every claim was tested
+against the evidence that would break it rather than assumed, that contradictions were surfaced
+rather than smoothed over, and that the system abstains out loud when the evidence does not
+support an answer.
 
 ## Positioning
 
 Adversarial self-falsification is the mechanism a neighbouring RAG product cannot truthfully copy:
-SPECTRA generates competing hypotheses, actively searches for the evidence that would *disprove*
-each one (`disproof_probe`, `disproof_searched`), scores evidence on relevance *and* source
+SPECTRA states discrete claims and actively searches for the evidence that would *refute* each
+one (`disproof_probe`, `disproof_searched`), scores evidence on relevance *and* source
 reliability with a stated reason, computes evidence diversity so three paragraphs of one PDF
 never outrank a database record plus a PDF plus a video, and publishes a full Search Autopsy of
 what it considered, used and rejected. When the evidence is thin it returns
@@ -53,7 +54,7 @@ what it considered, used and rejected. When the evidence is thin it returns
   the records actually live in (deep links open `http://localhost:3001`). Sessions are long and
   the operator is comparing, not browsing.
 - An investigation is a live process, not a request/response: `POST /api/investigations` returns
-  a `stream_url` and the workspace subscribes to SSE, receiving `trace`, `hypotheses`,
+  a `stream_url` and the workspace subscribes to SSE, receiving `trace`, `claims`,
   `evidence`, `status`, `complete` and `error` events with 15-second heartbeats and
   `Last-Event-ID` reconnection.
 - Findings get re-opened. Cases persist, investigations can be continued, and a report can be
@@ -73,9 +74,9 @@ Confirmed capabilities, from `docs/api.md` and the schema package:
 - Unified and modality-scoped search (`document`, `image`, `video`, `audio`), image-to-anything
   search by upload or `image_asset_id`, and NL→SQL database query that always returns the exact
   generated SQL and params for inspection.
-- Investigations with a live agent trace, hypotheses, an evidence ledger, a contradiction list,
-  a timeline, claims, application deep links, an explanation of source selection, and a
-  post-hoc Search Autopsy.
+- Investigations with a live agent trace, claims carrying their own confidence and disproof
+  probe, an evidence ledger, a contradiction list, a timeline, application deep links, an
+  explanation of source selection, and a post-hoc Search Autopsy.
 - Entity resolution with a full candidate list, winning method and explanation; a knowledge graph
   view; a source registry with health checks and sync; a model runtime dashboard with GPU
   telemetry and load/unload events; runtime agent enable/disable with no restart; six guided
@@ -91,6 +92,10 @@ Constraints that are product truth, not preference:
   tests only and are never imported by application code.
 - Search snippets arrive with matches marked `«…»` and must be rendered as highlights.
 - Confidence is both a label (`high | medium | low | insufficient`) and a number; both are shown.
+- **A claim's confidence is an absolute reading, not a share.** Claims are judged one at a time
+  against their own evidence (`status`, `supporting_evidence`, `contradicting_evidence`,
+  `disproof_probe`), so a set of confidences does not sum to 1 and must never be drawn as slices
+  of one whole. A single well-supported conclusion reads as one high figure.
 - Reliability always carries a `reliability_reason`; showing the score without the reason is a
   contract failure.
 - Errors arrive as `{error, reason, request_id, detail}` and must reach the user as the `reason`
@@ -126,7 +131,8 @@ shim is permanent.
 1. **Every fact is openable.** A claim the operator cannot click through to its exact page,
    frame, segment or row is not a finding, it is a rumour.
 2. **Doubt is content, not failure.** Contradictions, disproof probes, rejected evidence and
-   abstention get first-class presentation — never a collapsed footnote.
+   abstention get first-class presentation — never a collapsed footnote. A claim nobody tried to
+   falsify is shown as unchallenged, not as settled.
 3. **Show the machinery.** Score breakdowns, generated SQL, source selection reasons, per-stage
    latency and the agent trace are part of the product, not developer debug output.
 4. **Degradation is reported honestly.** No GPU, a disabled agent, an unreachable source and a

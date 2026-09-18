@@ -24,13 +24,13 @@ AGENT_PROFILES: dict[str, tuple[str, str | None, str | None]] = {
     "database": ("Database Agent", "query_database", "sources"),
     "graph": ("Graph Agent", "search_graph", None),
     "entity_resolution": ("Entity Resolver", "resolve_entity", "entities"),
-    "hypothesis": ("Hypothesis Engine", None, None),
+    "claim": ("Claim Builder", None, None),
     "disproof": ("Disproof Agent", "search_disconfirming_evidence", "search"),
     "verifier": ("Verifier", "verify_claim", None),
 }
 
 FALLBACK_ALTERNATIVES: dict[str, tuple[str, ...]] = {
-    "hypothesis": ("search_supporting_evidence", "detect_contradictions"),
+    "claim": ("search_supporting_evidence", "detect_contradictions"),
     "verifier": ("detect_contradictions", "search_supporting_evidence"),
     "graph": ("search_entities", "search_documents"),
 }

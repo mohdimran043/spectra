@@ -16,12 +16,12 @@ from spectra_config.logging import get_logger
 from spectra_schemas import (
     ApplicationLink,
     CanonicalEntity,
+    Claim,
     Contradiction,
     EvidenceItem,
     EvidenceLedger,
     EvidenceStance,
     GraphView,
-    Hypothesis,
     SearchHit,
     SourceDescriptor,
     TimelineEvent,
@@ -181,9 +181,9 @@ class EvidenceService:
 
     # -- sufficiency / graph ---------------------------------------------
     def sufficiency(
-        self, ledger: EvidenceLedger, hypothesis: Hypothesis
+        self, ledger: EvidenceLedger, claim: Claim
     ) -> tuple[float, dict[str, Any]]:
-        return self.ledger.sufficiency(ledger, hypothesis)
+        return self.ledger.sufficiency(ledger, claim)
 
     def supports_abstention(self, score: float, threshold: float | None = None) -> bool:
         return self.ledger.supports_abstention(score, threshold)

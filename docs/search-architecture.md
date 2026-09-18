@@ -119,7 +119,7 @@ five are included.
 | Latency target | ~3 s | ~60 s |
 | Iterations | 1 | up to 8 |
 | Deep brain | no | yes |
-| Hypotheses / disproof / verifier | no | yes |
+| Claims / disproof / verifier | no | yes |
 | Typical path | ID detect → database → answer | full investigation |
 
 Fast mode exists because `Find transaction TX82931` should not cost a 30B-parameter forward pass.

@@ -77,7 +77,7 @@ export function useInvestigationRecord(investigationId: string) {
     [stream.trace, traceQuery.data],
   );
 
-  const hypotheses = stream.hypotheses.length > 0 ? stream.hypotheses : (answer?.hypotheses ?? []);
+  const claims = stream.claims.length > 0 ? stream.claims : (answer?.claims ?? []);
   const evidence = stream.evidence.length > 0 ? stream.evidence : (answer?.evidence ?? []);
 
   const summary = (summaryQuery.data ?? []).find(
@@ -88,7 +88,7 @@ export function useInvestigationRecord(investigationId: string) {
     stream,
     answer,
     trace,
-    hypotheses,
+    claims,
     evidence,
     graph: graphQuery.data ?? null,
     graphError: graphQuery.error,

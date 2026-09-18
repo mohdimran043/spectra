@@ -8,8 +8,8 @@
   "confidence": 1.0,
   "entity_id": "ent_transaction_ab12",
   "entity_type": "transaction",
-  "first_seen": "2026-09-18T07:25:02.574991Z",
-  "last_seen": "2026-09-18T07:25:02.574992Z",
+  "first_seen": "2026-09-18T09:08:02.257179Z",
+  "last_seen": "2026-09-18T09:08:02.257180Z",
   "mention_count": 7,
   "modalities": [
     "document",

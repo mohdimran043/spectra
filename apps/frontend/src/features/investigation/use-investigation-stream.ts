@@ -4,12 +4,12 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 
 import { buildAuthHeaders, investigationStreamUrl } from '@/lib/api';
 import { readEventStream, type ServerSentEvent } from '@/lib/sse';
-import type { EvidenceItem, Hypothesis } from '@/lib/schemas/evidence';
+import type { Claim, EvidenceItem } from '@/lib/schemas/evidence';
 import {
   investigationAnswerSchema,
+  streamClaimsFrameSchema,
   streamErrorFrameSchema,
   streamEvidenceFrameSchema,
-  streamHypothesesFrameSchema,
   streamStatusFrameSchema,
   traceStepSchema,
   type BudgetState,
@@ -22,7 +22,7 @@ export type ConnectionState = 'idle' | 'connecting' | 'open' | 'closed' | 'faile
 export interface StreamState {
   readonly connection: ConnectionState;
   readonly trace: readonly TraceStep[];
-  readonly hypotheses: readonly Hypothesis[];
+  readonly claims: readonly Claim[];
   readonly evidence: readonly EvidenceItem[];
   readonly status: string | null;
   readonly iteration: number | null;
@@ -41,7 +41,7 @@ type Action =
   | { type: 'open' }
   | { type: 'heartbeat' }
   | { type: 'trace'; step: TraceStep; id: string | null }
-  | { type: 'hypotheses'; hypotheses: Hypothesis[]; id: string | null }
+  | { type: 'claims'; claims: Claim[]; id: string | null }
   | { type: 'evidence'; evidence: EvidenceItem[]; id: string | null }
   | { type: 'status'; status: string; iteration: number | null; budget: BudgetState | null; id: string | null }
   | { type: 'complete'; answer: InvestigationAnswer; id: string | null }
@@ -53,7 +53,7 @@ type Action =
 const INITIAL_STATE: StreamState = {
   connection: 'idle',
   trace: [],
-  hypotheses: [],
+  claims: [],
   evidence: [],
   status: null,
   iteration: null,
@@ -98,8 +98,8 @@ function reducer(state: StreamState, action: Action): StreamState {
         trace: mergeTrace(state.trace, action.step),
         lastEventId: action.id ?? state.lastEventId,
       };
-    case 'hypotheses':
-      return { ...state, hypotheses: action.hypotheses, lastEventId: action.id ?? state.lastEventId };
+    case 'claims':
+      return { ...state, claims: action.claims, lastEventId: action.id ?? state.lastEventId };
     case 'evidence':
       return {
         ...state,
@@ -118,7 +118,7 @@ function reducer(state: StreamState, action: Action): StreamState {
       return {
         ...state,
         answer: action.answer,
-        hypotheses: action.answer.hypotheses.length > 0 ? action.answer.hypotheses : state.hypotheses,
+        claims: action.answer.claims.length > 0 ? action.answer.claims : state.claims,
         evidence: mergeEvidence(state.evidence, action.answer.evidence),
         status: 'completed',
         connection: 'closed',
@@ -186,10 +186,9 @@ export function useInvestigationStream(investigationId: string | null, enabled =
           });
         return;
       }
-      case 'hypotheses': {
-        const parsed = streamHypothesesFrameSchema.safeParse(payload);
-        if (parsed.success)
-          dispatch({ type: 'hypotheses', hypotheses: parsed.data.hypotheses, id: event.id });
+      case 'claims': {
+        const parsed = streamClaimsFrameSchema.safeParse(payload);
+        if (parsed.success) dispatch({ type: 'claims', claims: parsed.data.claims, id: event.id });
         return;
       }
       case 'evidence': {

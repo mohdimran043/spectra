@@ -37,7 +37,7 @@ from .world import World
 
 def _incident_report_sections(world: World) -> tuple[Section, ...]:
     cast, timeline = world.cast, world.cast.timeline
-    transaction, customer, incident = world.transaction_id, world.customer_id, world.incident_id
+    transaction, incident = world.transaction_id, world.incident_id
     return (
         section(
             f"Incident report {incident}",

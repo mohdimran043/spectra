@@ -1,4 +1,4 @@
-"""SPECTRA Brain - agent controller, tools, hypotheses, disproof and verification.
+"""SPECTRA Brain - agent controller, tools, claims, disproof and verification.
 
 The controller's own reasoning lives at this level; every specialist agent lives
 in its own package under ``agents/``, and the machinery they all share - the tool
@@ -7,8 +7,8 @@ contract, the registry, the search gateway - lives under ``tools/``.
 
 from __future__ import annotations
 
+from .agents.claim import ClaimBuilder
 from .agents.disproof import DisproofAgent
-from .agents.hypothesis import HypothesisEngine
 from .agents.verifier import Verifier
 from .autopsy import AutopsyBuilder
 from .context import AgentServices, ToolContext
@@ -27,10 +27,10 @@ __all__ = [
     "AgentServices",
     "AnswerSynthesiser",
     "AutopsyBuilder",
+    "ClaimBuilder",
     "DisproofAgent",
     "ExplanationBuilder",
     "GpuScheduler",
-    "HypothesisEngine",
     "InMemoryStateStore",
     "InvestigationService",
     "PlannedCall",

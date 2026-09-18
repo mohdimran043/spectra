@@ -14,7 +14,7 @@ from typing import Any
 
 from spectra_config import Settings, get_settings
 from spectra_config.logging import get_logger
-from spectra_schemas import EvidenceItem, EvidenceLedger, Hypothesis
+from spectra_schemas import Claim, EvidenceItem, EvidenceLedger
 
 from .graph import EvidenceGraph
 
@@ -134,9 +134,9 @@ class LedgerService:
         }
 
     # -- sufficiency ------------------------------------------------------
-    def sufficiency(self, ledger: EvidenceLedger, hypothesis: Hypothesis) -> tuple[float, dict[str, Any]]:
-        """Score how well this ledger supports one hypothesis, and show the work."""
-        supporting = _supporting_items(ledger, hypothesis)
+    def sufficiency(self, ledger: EvidenceLedger, claim: Claim) -> tuple[float, dict[str, Any]]:
+        """Score how well this ledger supports one claim, and show the work."""
+        supporting = _supporting_items(ledger, claim)
         sub_ledger = EvidenceLedger(items=supporting)
         total_weight = sum(item.weight for item in supporting)
         sources = {item.provenance.source_id for item in supporting}
@@ -148,7 +148,7 @@ class LedgerService:
         }
         contributions = {name: round(SUFFICIENCY_WEIGHTS[name] * value, 4) for name, value in components.items()}
         penalty = min(
-            CONTRADICTION_PENALTY_PER_ITEM * len(hypothesis.contradicting_evidence),
+            CONTRADICTION_PENALTY_PER_ITEM * len(claim.contradicting_evidence),
             MAX_CONTRADICTION_PENALTY,
         )
         score = round(max(0.0, min(1.0, sum(contributions.values()) - penalty)), 4)
@@ -164,7 +164,7 @@ class LedgerService:
             "threshold": self.threshold,
             "sufficient": score >= self.threshold,
         }
-        log.debug("ledger.sufficiency", hypothesis_id=hypothesis.hypothesis_id, score=score)
+        log.debug("ledger.sufficiency", claim_id=claim.claim_id, score=score)
         return score, breakdown
 
     @property
@@ -176,13 +176,13 @@ class LedgerService:
         return float(score) < (self.threshold if threshold is None else float(threshold))
 
 
-def _supporting_items(ledger: EvidenceLedger, hypothesis: Hypothesis) -> list[EvidenceItem]:
-    """Items linked to this hypothesis, by either side of the link."""
-    named = set(hypothesis.supporting_evidence)
+def _supporting_items(ledger: EvidenceLedger, claim: Claim) -> list[EvidenceItem]:
+    """Items linked to this claim, by either side of the link."""
+    named = set(claim.supporting_evidence)
     return [
         item
         for item in ledger.items
-        if item.evidence_id in named or hypothesis.hypothesis_id in item.hypothesis_ids
+        if item.evidence_id in named or claim.claim_id in item.claim_ids
     ]
 
 

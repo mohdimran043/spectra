@@ -8,9 +8,10 @@ re-seeding moves every id at once and everything still lines up.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from .audio import AudioArtifact
 from .constants import (

@@ -10,10 +10,10 @@ import type { TimelineEvent } from '@/lib/schemas/evidence';
 import { useExplorer } from '@/features/evidence/explorer-context';
 import { GraphExplorer } from '@/features/graph/graph-explorer';
 import { BrainStatus } from './brain-status';
+import { ClaimsPanel } from './claims-panel';
 import { Conclusion } from './conclusion';
 import { ContradictionRadar } from './contradiction-radar';
 import { EvidenceLedger } from './evidence-ledger';
-import { HypothesesPanel } from './hypotheses-panel';
 import { QuestionHeader } from './question-header';
 import { TimelinePanel } from './timeline-panel';
 import { TracePanel } from './trace-panel';
@@ -26,9 +26,9 @@ interface LedgerFilter {
 
 /**
  * The investigation workspace, in the order a case file is read: the question,
- * what the machine is doing, what conflicts were found, the competing
- * explanations, the connections, the chronology, the exhibits, and only then the
- * conclusion.
+ * what the machine is doing, what conflicts were found, the claims and the
+ * probes run against them, the connections, the chronology, the exhibits, and
+ * only then the conclusion.
  */
 export function InvestigationWorkspace({ investigationId }: { investigationId: string }) {
   const record = useInvestigationRecord(investigationId);
@@ -98,12 +98,14 @@ export function InvestigationWorkspace({ investigationId }: { investigationId: s
         )}
 
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] xl:items-start">
-          <HypothesesPanel
-            hypotheses={record.hypotheses}
+          <ClaimsPanel
+            claims={record.claims}
+            live={stream.isLive}
             onSelectEvidence={(ids, label) => {
               setSelectedEvent(null);
               setLedgerFilter({ ids, label });
             }}
+            className="max-h-[38rem]"
           />
           <TracePanel steps={record.trace} live={stream.isLive} className="max-h-[38rem]" />
         </div>
@@ -160,7 +162,7 @@ export function InvestigationWorkspace({ investigationId }: { investigationId: s
               <LoadingRule label="The investigation is still running" />
               <EmptyState
                 title="No conclusion yet"
-                body="SPECTRA states a conclusion only after it has tested its hypotheses and searched for their disproof. Until then this space stays empty rather than showing a draft."
+                body="SPECTRA states a conclusion only after each claim has been weighed against its evidence and searched for its disproof. Until then this space stays empty rather than showing a draft."
               />
             </Leaf>
           ) : (
