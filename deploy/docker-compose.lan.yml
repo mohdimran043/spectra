@@ -1,0 +1,486 @@
+# ---------------------------------------------------------------------------
+# SPECTRA - OPERATOR / LAN stack.  Image-only, offline, immutable.
+#
+# This exact file ships as `docker-compose.yml` inside every sealed release
+# bundle.  It is the SAME file for every site: the only per-site inputs are
+# `.env`, the TLS material under $APP_ROOT/certs, and the config templates the
+# deploy script installs into $APP_ROOT/config on first run.
+#
+# Invariants enforced by scripts/package-release.sh and the repo audit:
+#   - no build directives    (nothing is compiled on an air-gapped host)
+#   - no `version:` key      (deprecated, ignored by Compose v2)
+#   - no `:latest` tags      (every tag is pinned to ${APP_VERSION} or a digest-stable release)
+#   - no hardcoded hostname, port, password or path - everything is ${VAR:-default}
+#     or ${VAR:?message}
+#
+# Per-service image overrides (SERVICE_*_IMAGE) exist so a patch bundle can
+# replace one service without touching this file; deploy-patch.sh writes them
+# into the live .env.
+#
+# Required in the environment (deploy.sh exports both):
+#   APP_VERSION   image tag for every SPECTRA-built service
+#   APP_ROOT      host directory holding all persistent state
+# ---------------------------------------------------------------------------
+
+x-logging: &default-logging
+  driver: "${LOG_DRIVER:-json-file}"
+  options:
+    max-size: "${LOG_MAX_SIZE:-10m}"
+    max-file: "${LOG_MAX_FILE:-5}"
+
+x-security: &default-security
+  - no-new-privileges:true
+
+x-spectra-env: &spectra-env
+  APP_ENV: "${APP_ENV:-production}"
+  DEPLOYMENT_MODE: "${DEPLOYMENT_MODE:-production}"
+  LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+  LOG_FORMAT: "${LOG_FORMAT:-json}"
+  TZ: "${TZ:-UTC}"
+
+  RELATIONAL_BACKEND: "${RELATIONAL_BACKEND:-postgres}"
+  VECTOR_BACKEND: "${VECTOR_BACKEND:-qdrant}"
+  LEXICAL_BACKEND: "${LEXICAL_BACKEND:-opensearch}"
+  GRAPH_BACKEND: "${GRAPH_BACKEND:-neo4j}"
+  OBJECT_BACKEND: "${OBJECT_BACKEND:-s3}"
+  CACHE_BACKEND: "${CACHE_BACKEND:-redis}"
+
+  POSTGRES_URL: "postgresql+psycopg://${POSTGRES_USER:-spectra}:${POSTGRES_PASSWORD:-CHANGE_ME_postgres_password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-spectra}"
+  ENTERPRISE_DATABASE_URL: "postgresql+psycopg://${ENTERPRISE_READONLY_USER:-spectra_readonly}:${ENTERPRISE_READONLY_PASSWORD:-CHANGE_ME_readonly_password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${ENTERPRISE_DB:-spectra_enterprise}"
+  QDRANT_URL: "http://${QDRANT_HOST:-qdrant}:${QDRANT_PORT:-6333}"
+  OPENSEARCH_URL: "http://${OPENSEARCH_HOST:-opensearch}:${OPENSEARCH_PORT:-9200}"
+  NEO4J_URL: "bolt://${NEO4J_HOST:-neo4j}:${NEO4J_BOLT_PORT:-7687}"
+  NEO4J_USER: "${NEO4J_USER:-neo4j}"
+  NEO4J_PASSWORD: "${NEO4J_PASSWORD:-CHANGE_ME_neo4j_password}"
+  REDIS_URL: "redis://:${REDIS_PASSWORD:-CHANGE_ME_redis_password}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/${REDIS_DB:-0}"
+  MINIO_ENDPOINT: "http://${MINIO_HOST:-minio}:${MINIO_PORT:-9000}"
+  MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-CHANGE_ME_minio_access_key}"
+  MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-CHANGE_ME_minio_secret_key}"
+  MINIO_BUCKET: "${MINIO_BUCKET:-spectra}"
+  MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+
+  DATA_DIR: /app/data
+  MODEL_DIR: /app/models
+
+  MODEL_PROFILE: "${MODEL_PROFILE:-rtx4090}"
+  MODEL_RUNTIME: "${MODEL_RUNTIME:-auto}"
+  GPU_VRAM_BUDGET_MB: "${GPU_VRAM_BUDGET_MB:-22000}"
+  MODEL_IDLE_EVICT_SECONDS: "${MODEL_IDLE_EVICT_SECONDS:-300}"
+  MODEL_LOAD_TIMEOUT_SECONDS: "${MODEL_LOAD_TIMEOUT_SECONDS:-300}"
+  MODEL_CALL_TIMEOUT_SECONDS: "${MODEL_CALL_TIMEOUT_SECONDS:-120}"
+  MODEL_MAX_RETRIES: "${MODEL_MAX_RETRIES:-2}"
+  OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+  VLLM_BASE_URL: "${VLLM_BASE_URL:-http://host.docker.internal:8001/v1}"
+  OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
+  OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+  FAST_BRAIN_MODEL: "${FAST_BRAIN_MODEL:-Qwen3-8B-Q4_K_M}"
+  DEEP_BRAIN_MODEL: "${DEEP_BRAIN_MODEL:-Qwen3-30B-A3B-Instruct-2507-Q4_K_M}"
+  VISION_MODEL: "${VISION_MODEL:-Qwen3-VL-8B-Instruct-Q4_K_M}"
+  EMBEDDING_MODEL: "${EMBEDDING_MODEL:-BAAI/bge-m3}"
+  MM_EMBEDDING_MODEL: "${MM_EMBEDDING_MODEL:-Qwen3-VL-Embedding-2B}"
+  RERANKER_MODEL: "${RERANKER_MODEL:-BAAI/bge-reranker-v2-m3}"
+  WHISPER_MODEL: "${WHISPER_MODEL:-large-v3}"
+  OCR_ENGINE: "${OCR_ENGINE:-auto}"
+
+  ENABLE_DOCUMENT_AGENT: "${ENABLE_DOCUMENT_AGENT:-true}"
+  ENABLE_IMAGE_AGENT: "${ENABLE_IMAGE_AGENT:-true}"
+  ENABLE_VIDEO_AGENT: "${ENABLE_VIDEO_AGENT:-true}"
+  ENABLE_AUDIO_AGENT: "${ENABLE_AUDIO_AGENT:-true}"
+  ENABLE_DATABASE_AGENT: "${ENABLE_DATABASE_AGENT:-true}"
+  ENABLE_GRAPH_AGENT: "${ENABLE_GRAPH_AGENT:-true}"
+  ENABLE_ENTITY_RESOLUTION: "${ENABLE_ENTITY_RESOLUTION:-true}"
+  ENABLE_HYPOTHESIS_ENGINE: "${ENABLE_HYPOTHESIS_ENGINE:-true}"
+  ENABLE_DISPROOF_AGENT: "${ENABLE_DISPROOF_AGENT:-true}"
+  ENABLE_VERIFIER: "${ENABLE_VERIFIER:-true}"
+  FAST_MODE_ENABLED: "${FAST_MODE_ENABLED:-true}"
+  DEEP_MODE_ENABLED: "${DEEP_MODE_ENABLED:-true}"
+
+  FAST_MAX_TOOL_CALLS: "${FAST_MAX_TOOL_CALLS:-5}"
+  FAST_MAX_LATENCY_SECONDS: "${FAST_MAX_LATENCY_SECONDS:-3}"
+  DEEP_MAX_TOOL_CALLS: "${DEEP_MAX_TOOL_CALLS:-30}"
+  DEEP_MAX_LATENCY_SECONDS: "${DEEP_MAX_LATENCY_SECONDS:-60}"
+  DEEP_MAX_ITERATIONS: "${DEEP_MAX_ITERATIONS:-8}"
+  CANDIDATE_POOL_SIZE: "${CANDIDATE_POOL_SIZE:-200}"
+  RERANK_TOP_K: "${RERANK_TOP_K:-40}"
+  EVIDENCE_TOP_K: "${EVIDENCE_TOP_K:-12}"
+  SUFFICIENCY_THRESHOLD: "${SUFFICIENCY_THRESHOLD:-0.62}"
+
+  MAX_UPLOAD_BYTES: "${MAX_UPLOAD_BYTES:-536870912}"
+  SQL_QUERY_TIMEOUT_SECONDS: "${SQL_QUERY_TIMEOUT_SECONDS:-10}"
+  SQL_MAX_ROWS: "${SQL_MAX_ROWS:-500}"
+  ANTIVIRUS_HOOK: "${ANTIVIRUS_HOOK:-}"
+  DEFAULT_ROLE: "${DEFAULT_ROLE:-analyst}"
+  CORS_ORIGINS: "${CORS_ORIGINS:-http://${SPECTRA_PUBLIC_HOST:-localhost}:${FRONTEND_PUBLISHED_PORT:-3000},http://${SPECTRA_PUBLIC_HOST:-localhost}:${MOCK_ENTERPRISE_PUBLISHED_PORT:-3001}}"
+  APPLICATION_BASE_URL: "${APPLICATION_BASE_URL:-http://${SPECTRA_PUBLIC_HOST:-localhost}:${MOCK_ENTERPRISE_PUBLISHED_PORT:-3001}}"
+
+services:
+
+  # ========================= datastores ====================================
+
+  postgres:
+    image: "${POSTGRES_IMAGE:-postgres:16.6-alpine}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-postgres"
+    restart: unless-stopped
+    stop_grace_period: 60s
+    # Documented non-root exception: the official entrypoint must start as root
+    # to initialise and chown the bind-mounted PGDATA, then drops to `postgres`
+    # for the server process itself.
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-spectra}"
+      POSTGRES_USER: "${POSTGRES_USER:-spectra}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-CHANGE_ME_postgres_password}"
+      POSTGRES_INITDB_ARGS: "${POSTGRES_INITDB_ARGS:---data-checksums}"
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: "${TZ:-UTC}"
+    command:
+      - postgres
+      - -c
+      - "max_connections=${POSTGRES_MAX_CONNECTIONS:-200}"
+      - -c
+      - "shared_buffers=${POSTGRES_SHARED_BUFFERS:-512MB}"
+      - -c
+      - "work_mem=${POSTGRES_WORK_MEM:-16MB}"
+    ports:
+      - "${POSTGRES_BIND_ADDR:-127.0.0.1}:${POSTGRES_PUBLISHED_PORT:-5432}:5432"
+    volumes:
+      - "${APP_ROOT:?APP_ROOT is required}/data/postgres:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"${POSTGRES_USER:-spectra}\" -d \"${POSTGRES_DB:-spectra}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  qdrant:
+    image: "${QDRANT_IMAGE:-qdrant/qdrant:v1.12.4}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-qdrant"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: "${QDRANT_UID:-1000}:${QDRANT_GID:-1000}"
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: "${QDRANT_PORT:-6333}"
+      QDRANT__SERVICE__GRPC_PORT: "${QDRANT_GRPC_PORT:-6334}"
+      QDRANT__TELEMETRY_DISABLED: "true"
+      QDRANT__LOG_LEVEL: "${QDRANT_LOG_LEVEL:-INFO}"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${QDRANT_BIND_ADDR:-127.0.0.1}:${QDRANT_PUBLISHED_PORT:-6333}:${QDRANT_PORT:-6333}"
+    volumes:
+      - "${APP_ROOT:?APP_ROOT is required}/data/qdrant:/qdrant/storage"
+    healthcheck:
+      # No curl/wget in the qdrant image; bash is present, so probe the port.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/${QDRANT_PORT:-6333}"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  opensearch:
+    image: "${OPENSEARCH_IMAGE:-opensearchproject/opensearch:2.17.1}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-opensearch"
+    restart: unless-stopped
+    stop_grace_period: 120s
+    user: "${OPENSEARCH_UID:-1000}:${OPENSEARCH_GID:-1000}"
+    environment:
+      discovery.type: single-node
+      cluster.name: "${OPENSEARCH_CLUSTER_NAME:-spectra}"
+      node.name: "${OPENSEARCH_NODE_NAME:-spectra-opensearch}"
+      bootstrap.memory_lock: "true"
+      # Security plugin off: OpenSearch is reachable only on the internal
+      # compose network and is never published beyond ${OPENSEARCH_BIND_ADDR}.
+      DISABLE_SECURITY_PLUGIN: "${OPENSEARCH_DISABLE_SECURITY:-true}"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: "${OPENSEARCH_ADMIN_PASSWORD:-CHANGE_ME_opensearch_password}"
+      OPENSEARCH_JAVA_OPTS: "${OPENSEARCH_JAVA_OPTS:--Xms2g -Xmx2g}"
+      TZ: "${TZ:-UTC}"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    ports:
+      - "${OPENSEARCH_BIND_ADDR:-127.0.0.1}:${OPENSEARCH_PUBLISHED_PORT:-9200}:${OPENSEARCH_PORT:-9200}"
+    volumes:
+      - "${APP_ROOT:?APP_ROOT is required}/data/opensearch:/usr/share/opensearch/data"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${OPENSEARCH_PORT:-9200}/_cluster/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  neo4j:
+    image: "${NEO4J_IMAGE:-neo4j:5.26.0-community}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-neo4j"
+    restart: unless-stopped
+    stop_grace_period: 120s
+    user: "${NEO4J_UID:-7474}:${NEO4J_GID:-7474}"
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-CHANGE_ME_neo4j_password}"
+      NEO4J_USER: "${NEO4J_USER:-neo4j}"
+      NEO4J_PASSWORD: "${NEO4J_PASSWORD:-CHANGE_ME_neo4j_password}"
+      NEO4J_server_default__listen__address: 0.0.0.0
+      NEO4J_server_memory_heap_initial__size: "${NEO4J_HEAP_INITIAL:-1g}"
+      NEO4J_server_memory_heap_max__size: "${NEO4J_HEAP_MAX:-2g}"
+      NEO4J_server_memory_pagecache_size: "${NEO4J_PAGECACHE:-1g}"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${NEO4J_BIND_ADDR:-127.0.0.1}:${NEO4J_HTTP_PUBLISHED_PORT:-7474}:${NEO4J_HTTP_PORT:-7474}"
+      - "${NEO4J_BIND_ADDR:-127.0.0.1}:${NEO4J_BOLT_PUBLISHED_PORT:-7687}:${NEO4J_BOLT_PORT:-7687}"
+    volumes:
+      - "${APP_ROOT:?APP_ROOT is required}/data/neo4j/data:/data"
+      - "${APP_ROOT:?APP_ROOT is required}/data/neo4j/logs:/logs"
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u \"$${NEO4J_USER}\" -p \"$${NEO4J_PASSWORD}\" 'RETURN 1' >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  redis:
+    image: "${REDIS_IMAGE:-redis:7.4-alpine}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-redis"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: "${REDIS_UID:-999}:${REDIS_GID:-999}"
+    command:
+      - redis-server
+      - --requirepass
+      - "${REDIS_PASSWORD:-CHANGE_ME_redis_password}"
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - "${REDIS_MAXMEMORY:-1gb}"
+      - --maxmemory-policy
+      - "${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-CHANGE_ME_redis_password}"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${REDIS_BIND_ADDR:-127.0.0.1}:${REDIS_PUBLISHED_PORT:-6379}:${REDIS_PORT:-6379}"
+    volumes:
+      - "${APP_ROOT:?APP_ROOT is required}/data/redis:/data"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  # MinIO publishes to quay.io; the Docker Hub `minio/minio` path no longer
+  # serves images and fails with "pull access denied".
+  minio:
+    image: "${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2024-10-13T13-34-11Z}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-minio"
+    restart: unless-stopped
+    stop_grace_period: 60s
+    user: "${MINIO_UID:-1000}:${MINIO_GID:-1000}"
+    command: ["server", "/data", "--console-address", ":${MINIO_CONSOLE_PORT:-9001}"]
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-CHANGE_ME_minio_access_key}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-CHANGE_ME_minio_secret_key}"
+      MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+      MINIO_BROWSER: "${MINIO_BROWSER:-on}"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${MINIO_BIND_ADDR:-127.0.0.1}:${MINIO_PUBLISHED_PORT:-9000}:${MINIO_PORT:-9000}"
+      - "${MINIO_BIND_ADDR:-127.0.0.1}:${MINIO_CONSOLE_PUBLISHED_PORT:-9001}:${MINIO_CONSOLE_PORT:-9001}"
+    volumes:
+      - "${APP_ROOT:?APP_ROOT is required}/data/minio:/data"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  # One-shot bucket provisioning.  Documented healthcheck exception: this
+  # container is expected to exit, so dependants wait on
+  # service_completed_successfully rather than service_healthy.
+  minio-init:
+    image: "${MINIO_MC_IMAGE:-quay.io/minio/mc:RELEASE.2024-10-08T09-37-26Z}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-minio-init"
+    restart: "no"
+    stop_grace_period: 10s
+    user: "${MINIO_UID:-1000}:${MINIO_GID:-1000}"
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      MC_CONFIG_DIR: /tmp/.mc
+      MINIO_ENDPOINT: "http://${MINIO_HOST:-minio}:${MINIO_PORT:-9000}"
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-CHANGE_ME_minio_access_key}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-CHANGE_ME_minio_secret_key}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-spectra}"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        mc alias set spectra "$${MINIO_ENDPOINT}" "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing "spectra/$${MINIO_BUCKET}"
+        mc anonymous set none "spectra/$${MINIO_BUCKET}" || true
+        echo "minio bucket $${MINIO_BUCKET} ready"
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  # ========================= application ===================================
+
+  api:
+    image: "${SERVICE_API_IMAGE:-spectra-api:${APP_VERSION:?APP_VERSION is required}}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-api"
+    restart: unless-stopped
+    stop_grace_period: 60s
+    user: "${APP_UID:-10001}:${APP_GID:-10001}"
+    environment:
+      <<: *spectra-env
+      API_HOST: 0.0.0.0
+      API_PORT: "${API_PORT:-8000}"
+      API_HEALTHCHECK_URL: "${API_HEALTHCHECK_URL:-http://127.0.0.1:8000/api/health}"
+    # Operator-managed overrides for keys this file does not already set.
+    # Installed from config/spectra-overrides.env on first deploy.
+    env_file:
+      - path: "${APP_ROOT:?APP_ROOT is required}/config/spectra-overrides.env"
+        required: false
+    # TLS is opt-in: set SPECTRA_UVICORN_EXTRA_ARGS in .env, e.g.
+    #   --ssl-certfile /app/certs/server.crt --ssl-keyfile /app/certs/server.key
+    command:
+      - sh
+      - -c
+      - exec uvicorn spectra_api.main:app --host 0.0.0.0 --port ${API_PORT:-8000} --workers ${API_WORKERS:-1} --proxy-headers --forwarded-allow-ips '*' ${SPECTRA_UVICORN_EXTRA_ARGS:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+      qdrant: { condition: service_healthy }
+      opensearch: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    ports:
+      - "${API_BIND_ADDR:-0.0.0.0}:${API_PUBLISHED_PORT:-8000}:${API_PORT:-8000}"
+    volumes:
+      - "${APP_ROOT:?APP_ROOT is required}/data/app:/app/data"
+      - "${SPECTRA_MODEL_DIR:-${APP_ROOT}/models}:/app/models"
+      - "${APP_ROOT:?APP_ROOT is required}/certs:/app/certs:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSk \"$${API_HEALTHCHECK_URL}\" >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 180s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  worker:
+    image: "${SERVICE_WORKER_IMAGE:-spectra-worker:${APP_VERSION:?APP_VERSION is required}}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-worker"
+    restart: unless-stopped
+    stop_grace_period: 120s
+    user: "${APP_UID:-10001}:${APP_GID:-10001}"
+    environment:
+      <<: *spectra-env
+      SPECTRA_API_URL: "http://${API_HOST_INTERNAL:-api}:${API_PORT:-8000}"
+      WORKER_CONCURRENCY: "${WORKER_CONCURRENCY:-2}"
+    env_file:
+      - path: "${APP_ROOT:?APP_ROOT is required}/config/spectra-overrides.env"
+        required: false
+    depends_on:
+      postgres: { condition: service_healthy }
+      qdrant: { condition: service_healthy }
+      opensearch: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    volumes:
+      - "${APP_ROOT:?APP_ROOT is required}/data/app:/app/data"
+      - "${SPECTRA_MODEL_DIR:-${APP_ROOT}/models}:/app/models"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f spectra_worker >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  frontend:
+    image: "${SERVICE_FRONTEND_IMAGE:-spectra-frontend:${APP_VERSION:?APP_VERSION is required}}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-frontend"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: "${NODE_UID:-1000}:${NODE_GID:-1000}"
+    environment:
+      NODE_ENV: production
+      PORT: "${FRONTEND_PORT:-3000}"
+      HOSTNAME: 0.0.0.0
+      SPECTRA_API_URL: "http://${API_HOST_INTERNAL:-api}:${API_PORT:-8000}"
+      NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL:-http://${SPECTRA_PUBLIC_HOST:-localhost}:${API_PUBLISHED_PORT:-8000}}"
+      NEXT_PUBLIC_APPLICATION_BASE_URL: "${APPLICATION_BASE_URL:-http://${SPECTRA_PUBLIC_HOST:-localhost}:${MOCK_ENTERPRISE_PUBLISHED_PORT:-3001}}"
+      NEXT_TELEMETRY_DISABLED: "1"
+      TZ: "${TZ:-UTC}"
+    depends_on:
+      api: { condition: service_healthy }
+    ports:
+      - "${FRONTEND_BIND_ADDR:-0.0.0.0}:${FRONTEND_PUBLISHED_PORT:-3000}:${FRONTEND_PORT:-3000}"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+  mock-enterprise:
+    image: "${SERVICE_MOCK_ENTERPRISE_IMAGE:-spectra-mock-enterprise:${APP_VERSION:?APP_VERSION is required}}"
+    container_name: "${CONTAINER_PREFIX:-spectra}-mock-enterprise"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: "${NODE_UID:-1000}:${NODE_GID:-1000}"
+    environment:
+      NODE_ENV: production
+      PORT: "${MOCK_ENTERPRISE_PORT:-3001}"
+      HOSTNAME: 0.0.0.0
+      # Least privilege: the demo application reads through the read-only role.
+      DATABASE_URL: "postgresql://${ENTERPRISE_READONLY_USER:-spectra_readonly}:${ENTERPRISE_READONLY_PASSWORD:-CHANGE_ME_readonly_password}@${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${ENTERPRISE_DB:-spectra_enterprise}"
+      ENTERPRISE_SCHEMA: "${ENTERPRISE_SCHEMA:-enterprise}"
+      NEXT_TELEMETRY_DISABLED: "1"
+      TZ: "${TZ:-UTC}"
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports:
+      - "${MOCK_ENTERPRISE_BIND_ADDR:-0.0.0.0}:${MOCK_ENTERPRISE_PUBLISHED_PORT:-3001}:${MOCK_ENTERPRISE_PORT:-3001}"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3001)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    security_opt: *default-security
+    logging: *default-logging
+    networks: [spectra]
+
+networks:
+  spectra:
+    name: "${NETWORK_NAME:-spectra-net}"
+    driver: bridge

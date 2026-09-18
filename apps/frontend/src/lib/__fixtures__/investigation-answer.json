@@ -1,0 +1,330 @@
+{
+  "answer": "Transaction TX82931 failed because the authentication service timed out [E1][E2].",
+  "application_links": [
+    {
+      "entity_id": "ent_transaction_ab12",
+      "entity_type": "transaction",
+      "label": "Open Transaction",
+      "record_id": "TX82931",
+      "url": "http://localhost:3001/transactions/TX82931",
+      "verified_in_database": true
+    }
+  ],
+  "autopsy": {
+    "candidates_retrieved": 184,
+    "contradictions": 1,
+    "degraded": false,
+    "degraded_reasons": [],
+    "evidence_diversity": 0.95,
+    "evidence_rejected": 29,
+    "evidence_used": 3,
+    "gpu_peak_mb": null,
+    "hypotheses_disproved": 1,
+    "hypotheses_generated": 4,
+    "investigation_id": "inv_abc123",
+    "models_used": [
+      "ollama/qwen3:30b-a3b",
+      "transformers/BAAI/bge-m3"
+    ],
+    "rejection_reasons": {
+      "below relevance floor": 24,
+      "permission denied": 5
+    },
+    "sources_considered": [
+      "src_enterprise",
+      "src_docs",
+      "src_media"
+    ],
+    "stage_latency_ms": {
+      "candidate_generation": 31.2,
+      "rerank": 88.0
+    },
+    "tool_breakdown": {
+      "query_database": 3,
+      "search_documents": 6
+    },
+    "tool_calls": 18,
+    "total_latency_ms": 8400.0
+  },
+  "claims": [
+    {
+      "claim_id": "clm_1",
+      "confidence": 0.94,
+      "evidence_ids": [
+        "evd_1",
+        "evd_2"
+      ],
+      "status": "supported",
+      "text": "Authentication timeout caused the failure"
+    }
+  ],
+  "confidence": 0.94,
+  "confidence_label": "high",
+  "contradictions": [
+    {
+      "contradiction_id": "con_1",
+      "detail": "The superseded draft says rejected; the approved v2 says approved.",
+      "entity_id": "ent_incident_1",
+      "evidence_a": "evd_2",
+      "evidence_b": "evd_3",
+      "kind": "value_conflict",
+      "resolution": "Resolved in favour of evd_2: approved beats superseded.",
+      "resolved_in_favour_of": "evd_2",
+      "severity": 0.7,
+      "statement": "INC1829 status is reported as both 'approved' and 'rejected'"
+    }
+  ],
+  "degraded": false,
+  "degraded_reasons": [],
+  "entities": [
+    {
+      "aliases": [
+        "Txn 82931"
+      ],
+      "canonical_name": "TX82931",
+      "entity_id": "ent_transaction_ab12",
+      "entity_type": "transaction"
+    }
+  ],
+  "evidence": [
+    {
+      "citation": "Document: DOC9182 | Page: 14 | Section: Authentication",
+      "entities": [
+        "ent_transaction_ab12"
+      ],
+      "evidence_id": "evd_1",
+      "excerpt": "...connection pool was exhausted at 10:42, so the charge failed.",
+      "hypothesis_ids": [],
+      "kind": "database",
+      "label": "E1",
+      "modality": "database",
+      "occurred_at": "2026-03-11T10:42:01Z",
+      "provenance": {
+        "content_hash": "abcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "created_at": "2026-03-11T10:42:01Z",
+        "index_version": "idx_0001",
+        "ingested_at": "2026-03-11T10:42:01Z",
+        "locator": {
+          "bbox": null,
+          "char_end": null,
+          "char_start": null,
+          "document_id": "DOC9182",
+          "kind": "document",
+          "page": 14,
+          "paragraph": null,
+          "section": "Authentication"
+        },
+        "modality": "document",
+        "modified_at": null,
+        "object_uri": "spectra://objects/ab/abcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.pdf",
+        "source_id": "src_docs",
+        "source_name": "Corporate Documents",
+        "version": "2",
+        "version_status": "approved"
+      },
+      "relevance": 0.91,
+      "reliability": 0.75,
+      "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
+      "retrieved_at": "2026-09-18T07:25:02.574306Z",
+      "retrieved_by": "search_documents",
+      "stance": "supporting",
+      "summary": "The authentication service connection pool was exhausted at 10:42.",
+      "weight": 0.6825
+    },
+    {
+      "citation": "Document: DOC9182 | Page: 14 | Section: Authentication",
+      "entities": [
+        "ent_transaction_ab12"
+      ],
+      "evidence_id": "evd_2",
+      "excerpt": "...connection pool was exhausted at 10:42, so the charge failed.",
+      "hypothesis_ids": [],
+      "kind": "document",
+      "label": "E2",
+      "modality": "document",
+      "occurred_at": "2026-03-11T10:42:01Z",
+      "provenance": {
+        "content_hash": "abcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "created_at": "2026-03-11T10:42:01Z",
+        "index_version": "idx_0001",
+        "ingested_at": "2026-03-11T10:42:01Z",
+        "locator": {
+          "bbox": null,
+          "char_end": null,
+          "char_start": null,
+          "document_id": "DOC9182",
+          "kind": "document",
+          "page": 14,
+          "paragraph": null,
+          "section": "Authentication"
+        },
+        "modality": "document",
+        "modified_at": null,
+        "object_uri": "spectra://objects/ab/abcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.pdf",
+        "source_id": "src_docs",
+        "source_name": "Corporate Documents",
+        "version": "2",
+        "version_status": "approved"
+      },
+      "relevance": 0.91,
+      "reliability": 0.75,
+      "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
+      "retrieved_at": "2026-09-18T07:25:02.574341Z",
+      "retrieved_by": "search_documents",
+      "stance": "supporting",
+      "summary": "The authentication service connection pool was exhausted at 10:42.",
+      "weight": 0.6825
+    },
+    {
+      "citation": "Document: DOC9182 | Page: 14 | Section: Authentication",
+      "entities": [
+        "ent_transaction_ab12"
+      ],
+      "evidence_id": "evd_3",
+      "excerpt": "...connection pool was exhausted at 10:42, so the charge failed.",
+      "hypothesis_ids": [],
+      "kind": "video",
+      "label": "E3",
+      "modality": "video",
+      "occurred_at": "2026-03-11T10:42:01Z",
+      "provenance": {
+        "content_hash": "abcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "created_at": "2026-03-11T10:42:01Z",
+        "index_version": "idx_0001",
+        "ingested_at": "2026-03-11T10:42:01Z",
+        "locator": {
+          "bbox": null,
+          "char_end": null,
+          "char_start": null,
+          "document_id": "DOC9182",
+          "kind": "document",
+          "page": 14,
+          "paragraph": null,
+          "section": "Authentication"
+        },
+        "modality": "document",
+        "modified_at": null,
+        "object_uri": "spectra://objects/ab/abcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.pdf",
+        "source_id": "src_docs",
+        "source_name": "Corporate Documents",
+        "version": "2",
+        "version_status": "approved"
+      },
+      "relevance": 0.91,
+      "reliability": 0.75,
+      "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
+      "retrieved_at": "2026-09-18T07:25:02.574351Z",
+      "retrieved_by": "search_documents",
+      "stance": "neutral",
+      "summary": "The authentication service connection pool was exhausted at 10:42.",
+      "weight": 0.6825
+    }
+  ],
+  "explanation": {
+    "reasons": [
+      "The query referenced a transaction ID, so Database Search was selected first."
+    ],
+    "sources_selected": [
+      "src_enterprise",
+      "src_docs"
+    ],
+    "sources_skipped": [
+      {
+        "reason": "vision agent disabled",
+        "source": "src_images"
+      }
+    ]
+  },
+  "followups": [
+    "Which other transactions hit the same incident?"
+  ],
+  "hypotheses": [
+    {
+      "confidence": 0.92,
+      "contradicting_evidence": [],
+      "description": "Authentication timeout",
+      "disproof_probe": "A successful auth call for TX82931 within the failure window.",
+      "disproof_searched": true,
+      "hypothesis_id": "H1",
+      "predicted_signals": [
+        "auth_timeout in the transaction record"
+      ],
+      "prior": 0.25,
+      "rationale": "The failure_reason field and the post-mortem agree.",
+      "status": "supported",
+      "supporting_evidence": [
+        "evd_1",
+        "evd_2"
+      ],
+      "verification_note": "Two independent sources; no unresolved contradiction.",
+      "verified": true
+    },
+    {
+      "confidence": 0.04,
+      "contradicting_evidence": [
+        "evd_1"
+      ],
+      "description": "Fraud-rule rejection",
+      "disproof_probe": "A fraud rule firing for TX82931.",
+      "disproof_searched": true,
+      "hypothesis_id": "H2",
+      "predicted_signals": [],
+      "prior": 0.25,
+      "rationale": "",
+      "status": "disproved",
+      "supporting_evidence": [],
+      "verification_note": "",
+      "verified": false
+    }
+  ],
+  "investigation_id": "inv_abc123",
+  "metrics": {
+    "candidates_retrieved": 184,
+    "contradictions": 1,
+    "evidence_rejected": 29,
+    "evidence_used": 3,
+    "gpu_peak_mb": null,
+    "iterations": 3,
+    "model_latency_ms": {},
+    "models_used": [
+      "ollama/qwen3:30b-a3b"
+    ],
+    "sources_considered": [
+      "src_enterprise",
+      "src_docs"
+    ],
+    "stage_latency_ms": {},
+    "tokens": {},
+    "tool_calls": 18,
+    "total_latency_ms": 8400.0
+  },
+  "status": "supported",
+  "timeline": [
+    {
+      "detail": "",
+      "entity_ids": [],
+      "event_id": "ev_1",
+      "evidence_ids": [
+        "evd_1"
+      ],
+      "label": "Transaction created",
+      "modality": "database",
+      "occurred_at": "2026-03-11T10:42:01Z",
+      "precision": "exact",
+      "source_id": null
+    },
+    {
+      "detail": "auth_timeout",
+      "entity_ids": [],
+      "event_id": "ev_2",
+      "evidence_ids": [
+        "evd_1"
+      ],
+      "label": "Authentication failed",
+      "modality": "database",
+      "occurred_at": "2026-03-11T10:42:07Z",
+      "precision": "exact",
+      "source_id": null
+    }
+  ]
+}

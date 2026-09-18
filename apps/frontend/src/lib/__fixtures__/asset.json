@@ -1,0 +1,25 @@
+{
+  "asset_id": "ast_1",
+  "content_hash": "abcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "created_at": "2026-09-18T07:25:02.574870Z",
+  "duration_seconds": null,
+  "error": null,
+  "ingested_at": null,
+  "kind": "document",
+  "media_type": "application/pdf",
+  "metadata": {},
+  "modified_at": null,
+  "object_uri": "spectra://objects/ab/abcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.pdf",
+  "page_count": 14,
+  "permissions": [
+    "admin",
+    "analyst",
+    "viewer"
+  ],
+  "size_bytes": 182331,
+  "source_id": "src_docs",
+  "status": "ready",
+  "title": "Incident_Report.pdf",
+  "version": "1",
+  "version_status": "current"
+}

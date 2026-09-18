@@ -1,0 +1,81 @@
+# ---------------------------------------------------------------------------
+# Docker build context filter for the Python images (api and worker).
+#
+# Those build from the repository root because they install the whole monorepo;
+# their Dockerfiles live at services/api/Dockerfile and services/worker/Dockerfile.
+# The Next.js apps build from their own directories and carry their own
+# .dockerignore.  Keep this aggressive: the context is copied for every build.
+# ---------------------------------------------------------------------------
+
+# --- version control / IDE -------------------------------------------------
+.git
+.gitignore
+.github
+.claude
+.vscode
+.idea
+
+# --- secrets: never bake configuration into an image -----------------------
+.env
+.env.*
+!.env.example
+deploy/.env
+deploy/.env.*
+!deploy/.env.example
+deploy/certs
+**/*.pem
+**/*.key
+**/*.crt
+**/*.p12
+**/secrets
+
+# --- python build / cache artefacts ----------------------------------------
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+.venv
+venv
+.eggs
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+dist
+build
+
+# --- node / next.js --------------------------------------------------------
+**/node_modules
+**/.next
+**/out
+**/.turbo
+**/coverage
+**/npm-debug.log*
+**/yarn-error.log*
+**/.pnpm-store
+
+# --- runtime state: bind-mounted at run time, never baked in ---------------
+data/uploads
+data/processed
+data/runtime
+data/objects
+models
+demo-data/generated
+
+# --- release artefacts (would recursively include image tarballs) ----------
+releases
+backups
+**/*.tar.gz
+**/*.sha256
+
+# --- docs and prompts ------------------------------------------------------
+docs
+*.md
+!README.md
+master-prompt.txt
+docker-deployment.txt
+progress.md
+
+# --- tests and evaluation reports ------------------------------------------
+tests
+evaluation/spectra_eval/reports

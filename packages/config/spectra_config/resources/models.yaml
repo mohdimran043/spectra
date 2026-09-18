@@ -1,0 +1,103 @@
+# ---------------------------------------------------------------------------
+# SPECTRA model registry.
+#
+# `roles` are what the application asks for ("give me the deep_brain").  Each
+# role lists candidate implementations in preference order; the Model Runtime
+# Manager picks the first one whose runtime is reachable and whose VRAM fits the
+# active profile's budget.  Application code NEVER names a concrete model.
+# ---------------------------------------------------------------------------
+version: 1
+
+profiles:
+  rtx4090:
+    description: "Single RTX 4090, 24 GB VRAM, sequential model scheduling"
+    vram_budget_mb: 22000
+    allow_concurrent_gpu_models: false
+    prefer_device: cuda
+  cpu:
+    description: "No usable GPU - CPU-only / degraded operation"
+    vram_budget_mb: 0
+    allow_concurrent_gpu_models: false
+    prefer_device: cpu
+  cloud:
+    description: "Remote inference endpoints, no local VRAM accounting"
+    vram_budget_mb: 0
+    allow_concurrent_gpu_models: true
+    prefer_device: remote
+
+roles:
+
+  fast_brain:
+    enabled: true
+    purpose: "Intent classification, query rewriting, routing, cheap answers"
+    candidates:
+      - { runtime: ollama,        model: "qwen3:8b",                       vram_mb: 6500,  device: auto }
+      - { runtime: vllm,          model: "Qwen/Qwen3-8B",                  vram_mb: 18000, device: cuda }
+      - { runtime: openai,        model: "${OPENAI_FAST_MODEL:-gpt-4o-mini}", vram_mb: 0,  device: remote }
+      - { runtime: llama_cpp,     model: "Qwen3-8B-Q4_K_M.gguf",           vram_mb: 6500,  device: cuda }
+      - { runtime: deterministic, model: "rule-router-v1",                 vram_mb: 0,     device: cpu }
+
+  deep_brain:
+    enabled: true
+    purpose: "Planning, claim extraction, synthesis, contradiction reasoning"
+    candidates:
+      - { runtime: ollama,        model: "qwen3:30b-a3b",                              vram_mb: 19000, device: auto }
+      - { runtime: vllm,          model: "Qwen/Qwen3-30B-A3B-Instruct-2507",           vram_mb: 21000, device: cuda }
+      - { runtime: openai,        model: "${OPENAI_DEEP_MODEL:-gpt-4o}",               vram_mb: 0,     device: remote }
+      - { runtime: llama_cpp,     model: "Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",    vram_mb: 19000, device: cuda }
+      - { runtime: deterministic, model: "evidence-synthesis-v1",                      vram_mb: 0,     device: cpu }
+    fallback_role: fast_brain
+
+  vision:
+    enabled: true
+    purpose: "Image/keyframe captioning, visual entity extraction, visual verification"
+    candidates:
+      - { runtime: ollama,        model: "qwen2.5vl:7b",                   vram_mb: 8000,  device: auto }
+      - { runtime: vllm,          model: "Qwen/Qwen3-VL-8B-Instruct",      vram_mb: 20000, device: cuda }
+      - { runtime: llama_cpp,     model: "Qwen3-VL-8B-Instruct-Q4_K_M.gguf", vram_mb: 8000, device: cuda }
+      - { runtime: deterministic, model: "ocr-caption-v1",                 vram_mb: 0,     device: cpu }
+
+  embedding:
+    enabled: true
+    purpose: "Dense text retrieval over documents, transcripts and metadata"
+    dimension: 1024
+    candidates:
+      - { runtime: transformers,  model: "BAAI/bge-m3",                    vram_mb: 2400,  device: auto }
+      - { runtime: transformers,  model: "BAAI/bge-small-en-v1.5",         vram_mb: 400,   device: auto, dimension: 384 }
+      - { runtime: deterministic, model: "hashed-ngram-v1",                vram_mb: 0,     device: cpu, dimension: 512 }
+
+  mm_embedding:
+    enabled: true
+    purpose: "Image<->text retrieval in a shared multimodal space"
+    dimension: 512
+    candidates:
+      - { runtime: transformers,  model: "sentence-transformers/clip-ViT-B-32", vram_mb: 700, device: auto, dimension: 512 }
+      - { runtime: deterministic, model: "visual-descriptor-v1",           vram_mb: 0,     device: cpu, dimension: 512 }
+
+  reranker:
+    enabled: true
+    purpose: "Cross-encoder reranking of stage-1 retrieval candidates"
+    candidates:
+      # bge-reranker-v2-m3 is ~568M parameters: excellent on the 4090, but ~1s
+      # per pair on CPU, which blows the 3-second fast-mode budget on its own.
+      # It is therefore cuda-only, and a GPU-less host selects MiniLM instead.
+      - { runtime: transformers,  model: "BAAI/bge-reranker-v2-m3",        vram_mb: 2400,  device: cuda }
+      - { runtime: transformers,  model: "cross-encoder/ms-marco-MiniLM-L-6-v2", vram_mb: 300, device: auto }
+      - { runtime: deterministic, model: "lexical-overlap-v1",             vram_mb: 0,     device: cpu }
+
+  speech:
+    enabled: true
+    purpose: "Ingestion-time transcription with word-level timestamps"
+    candidates:
+      - { runtime: faster_whisper, model: "large-v3", vram_mb: 4500, device: cuda, compute_type: float16 }
+      - { runtime: faster_whisper, model: "base",     vram_mb: 0,    device: cpu,  compute_type: int8 }
+      - { runtime: deterministic,  model: "no-asr-v1", vram_mb: 0,   device: cpu }
+
+  ocr:
+    enabled: true
+    purpose: "Text extraction from images, scans and video keyframes"
+    candidates:
+      - { runtime: rapidocr,      model: "PP-OCRv4",   vram_mb: 0,    device: cpu }
+      - { runtime: paddleocr,     model: "PP-OCRv4",   vram_mb: 1500, device: auto }
+      - { runtime: tesseract,     model: "tesseract",  vram_mb: 0,    device: cpu }
+      - { runtime: deterministic, model: "no-ocr-v1",  vram_mb: 0,    device: cpu }

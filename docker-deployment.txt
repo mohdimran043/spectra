@@ -1,0 +1,260 @@
+---
+name: offline-lan-docker-deployment
+description: Design, build, ship, and operate offline/air-gapped Docker Compose deployments using sealed release bundles — a VERSION file, image-only LAN compose, pre-saved image tarballs, operator scripts (deploy / verify / rollback / patch), and a separated full-release vs patch-bundle workflow. Use when setting up or reviewing a repo's release-packaging and LAN/operator deployment, adding new services to such a stack, writing package-release / package-patch / deploy / rollback scripts, troubleshooting APP_ROOT / APP_VERSION / compose-project issues, or converting a "dev-builds-and-deploys" repo into an operator-friendly offline model.
+---
+
+# Offline LAN Docker Compose Deployments
+
+A reusable pattern for shipping a Docker Compose application to **operators on air-gapped or restricted LAN machines** as a single sealed bundle. Developers produce artifacts; operators run one script. No registry, no compiler, no Git required on the target host.
+
+This skill is the fast path for implementing, extending, or troubleshooting that pattern. It is intentionally project-agnostic: wherever you see `<app>`, substitute your project slug.
+
+## Core mental model
+
+Before editing anything, confirm the repo follows (or intends to follow) these invariants:
+
+- **Two compose files, not one merged file**
+  - `deploy/docker-compose.yml` — developer stack, contains `build:` contexts.
+  - `deploy/docker-compose.lan.yml` — bundle/operator stack, **image-only**, pinned to `${APP_VERSION}`. No `build:`, no `version:` key.
+- **`VERSION` file at repo root is the source of truth** for image tags, bundle names, and the `APP_VERSION` env var. Never use `latest`.
+- **`APP_ROOT`** (a host-side path, e.g. `/disk2/<app>` or `/opt/<app>`) holds all persistent state on the target: `config/`, `certs/`, `data/<volume>/`, `releases/ui/`, `releases/patches/`, `backups/`, `.deployed-state.json`. The bundle itself stays read-only.
+- **Two release artifacts**
+  - **Full release** — everything needed for a greenfield install. Tarball name: `<app>-<VERSION>-release.tar.gz`.
+  - **Patch bundle** — only selected services (± db migrations, ± static UI) applied on top of a running stack at the same base version. Tarball name: `<app>-<VERSION>-YYYYMMDD-pN.tar.gz`.
+- **Database split**
+  - `db/baseline/*.sql` — applied once on a greenfield DB; never touch for live DBs.
+  - `db/migrations/*.sql` — ordered, append-only stream applied on every upgrade.
+- **Immutable-compose principle** — the same `docker-compose.yml` ships to every environment. The only per-site inputs are `.env`, TLS certs, and (optionally) config templates the script copies on first install.
+
+If any of these are missing, fix them before writing new scripts on top.
+
+## Standard artifact layout
+
+```
+<app>-<VERSION>/
+├── docker-compose.yml           # = deploy/docker-compose.lan.yml (image-only)
+├── .env.example                 # Every site-specific value, with CHANGE_ME placeholders
+├── VERSION                      # <VERSION>
+├── CHECKSUMS.sha256
+├── README.md                    # Operator-facing (NOT the dev README)
+├── CHANGELOG.md
+├── release-manifest.json        # type, version, services[], includes_db, includes_ui
+│
+├── images/                      # docker save | gzip, one file per image, pinned tags
+│   └── <app>-api-<VERSION>.tar.gz
+│
+├── config/                      # Templates copied to $APP_ROOT/config/ on first install
+├── certs/                       # Operator drops site TLS here
+├── db/
+│   ├── baseline/*.sql
+│   └── migrations/*.sql
+├── ui/<VERSION>/dist/<app>/     # Optional: pre-built SPA for nginx bind mount
+└── scripts/
+    ├── deploy.sh
+    ├── deploy-patch.sh
+    ├── rollback.sh
+    ├── verify-deployment.sh
+    ├── show-state.sh
+    ├── show-version.sh
+    ├── backup-data.sh
+    ├── run-migrations.sh
+    ├── import-images.sh
+    ├── generate-ssl.sh
+    └── bootstrap-patch-support.sh
+```
+
+**Bundles do not ship a Makefile.** Operators invoke `./scripts/<name>.sh` directly. If you find `make <target>` in operator docs, that's a bug.
+
+## Decision tree — which command?
+
+```
+Task                                      → Command (from repo root / from bundle)
+─────────────────────────────────────────────────────────────────────────────────
+Start dev stack                           → make start         (or docker compose -f deploy/docker-compose.yml up -d)
+Bump release number                       → make version-bump V=patch|minor|major
+Align deploy/.env APP_VERSION with VERSION→ make sync-deploy-env
+Cut a full offline release bundle         → make package-release
+Cut a patch bundle                        → make package-patch SVC='api jobs' [DB=1] [UI=1]
+
+Full deploy on a LAN host (in bundle)     → ./scripts/deploy.sh
+Patch deploy (in live deploy dir)         → ./scripts/deploy-patch.sh
+Confirm health                            → ./scripts/verify-deployment.sh
+Show what's deployed                      → ./scripts/show-state.sh
+Roll back images/UI                       → ./scripts/rollback.sh /path/to/previous-bundle/
+One-time pre-patch bootstrap on LAN       → ./scripts/bootstrap-patch-support.sh
+```
+
+## Developer workflow — cut a full release
+
+```
+- [ ] 1. Bump VERSION + CHANGELOG, commit
+- [ ] 2. Lint + any compliance check the repo defines
+- [ ] 3. make package-release
+- [ ] 4. Validate the bundle on a clean VM (no prior images)
+- [ ] 5. Transfer tarball + .sha256 to operator
+```
+
+A conforming `scripts/package-release.sh` must:
+
+1. Build any static UI into `ui/<VERSION>/dist/<app>/` (or accept `SKIP_UI_BUILD=1`).
+2. `docker compose pull` infra images, then `docker compose build` app images at tag `${VERSION}`.
+3. `docker save | gzip` every image into `releases/<app>-<VERSION>/images/`.
+4. Copy `deploy/docker-compose.lan.yml` → bundle root as `docker-compose.yml`, rewriting any `../db/` paths to `./db/`.
+5. Copy config templates, `db/baseline/*.sql`, `db/migrations/*.sql`, `.env.example`, operator scripts.
+6. Write `VERSION`, `README.md` (operator-facing), `CHANGELOG.md`, `release-manifest.json`.
+7. Emit `CHECKSUMS.sha256` inside the bundle and a sibling `*.sha256` for the tarball.
+
+## Developer workflow — cut a patch
+
+Use a patch when only a subset of services changed and the target host is already at the same base `VERSION`. Patches skip infra images entirely.
+
+```bash
+make package-patch SVC='api jobs'          # two app services
+make package-patch SVC=api DB=1            # api + new migrations
+make package-patch UI=1                    # UI-only
+make package-patch SVC=admin DB=1 UI=1
+```
+
+Rules for `package-patch.sh`:
+
+- Patch id = `<BASE_VERSION>-YYYYMMDD-pN`, where `pN` is computed by scanning `releases/`, `releases/patches/`, and `releases/patches/applied/` for the next free sequence for that base+day. **Never hand-assign `pN`.**
+- Patch images must be tagged with the **patch id**, not the base version (`<app>-api:<BASE>-YYYYMMDD-pN`).
+- Write a `patch-manifest.json` with `{type: "patch", patch_id, base_version, services{image, image_var, container}, includes_db, includes_ui, git_commit, build_host, build_user, created_at}`.
+- Emit `CHECKSUMS.sha256`.
+
+## Operator workflow — full deploy
+
+From the extracted bundle directory (same folder as `docker-compose.yml`):
+
+```bash
+# First install
+cp .env.example .env
+# edit .env — replace every CHANGE_ME; set APP_ROOT if the default doesn't apply
+./scripts/deploy.sh
+./scripts/verify-deployment.sh
+
+# Upgrade
+cp /path/to/previous-bundle/.env .env      # keep site-specific values
+./scripts/deploy.sh                        # backs up before migrations when an upgrade is detected
+./scripts/verify-deployment.sh
+```
+
+A conforming `deploy.sh` must:
+
+1. **Preflight**: Docker running, `.env` present, zero `CHANGE_ME` values left, no compose-project-name mismatch with an already-running stack.
+2. **Ensure `$APP_ROOT` tree**: `config/ certs/ data/<volume>/ releases/ui releases/patches/{,applied} backups`.
+3. **Install config on first run only**; never overwrite existing operator-edited config files.
+4. **Generate a self-signed cert** if `$APP_ROOT/certs/server.{crt,key}` is missing (with a clear "replace for production" warning).
+5. **Load all `images/*.tar.gz`** via `docker load`.
+6. **Bring postgres (or your DB) up first**, wait for health, run `backup-data.sh` if the prior version differs, then `run-migrations.sh`.
+7. **Start everything** with `docker compose -p "$COMPOSE_PROJECT_NAME" up -d`.
+8. **Record state**: write `$APP_ROOT/.deployed_version` and `$APP_ROOT/.deployed-state.json` (with per-service image, last deployment type, history list).
+
+## Operator workflow — apply a patch
+
+Patches run **against the live deploy directory**, not a fresh extract.
+
+```bash
+# One-time bootstrap on hosts installed before the patch-support era:
+./scripts/bootstrap-patch-support.sh
+
+# Per patch:
+cp <app>-<VERSION>-YYYYMMDD-pN.tar.gz ./releases/patches/
+# or:  cp ... $APP_ROOT/releases/patches/
+./scripts/deploy-patch.sh
+# Optional explicit path:
+./scripts/deploy-patch.sh /path/to/<patch>.tar.gz
+```
+
+A conforming `deploy-patch.sh` must:
+
+1. Resolve the patch archive (explicit arg, or newest `*.tar.gz` in the two inboxes).
+2. Extract to a scratch dir, read `patch-manifest.json`.
+3. `docker load` each image in `bundle/images/`.
+4. Write per-service image overrides into the live `.env` (e.g. `SERVICE_API_IMAGE=<app>-api:<PATCH_ID>`). These overrides are consumed by the same immutable `docker-compose.yml`.
+5. If `includes_db: true`: run `run-migrations.sh`.
+6. If `includes_ui: true`: copy the UI into `$APP_ROOT/releases/ui/<PATCH_ID>/dist/<app>/` and flip the `current` symlink.
+7. `docker compose up -d --no-deps --force-recreate <changed services>`.
+8. Append a history entry to `.deployed-state.json` and move the archive into `releases/patches/applied/`.
+
+## Rollback
+
+```bash
+./scripts/rollback.sh /path/to/<app>-<PREV_VERSION>/
+```
+
+Rollback reverts **images + UI only**. **Database schema is never rolled back automatically.** If the upgrade ran destructive migrations, the operator must restore from `$APP_ROOT/backups/` before bringing the old stack up. Document this prominently in the bundle README.
+
+## docker-compose.lan.yml requirements
+
+Every service must:
+
+- Use `image: <app>-<svc>:${APP_VERSION:?APP_VERSION is required}` (or `${<SVC>_IMAGE:-<app>-<svc>:${APP_VERSION}}` to allow patch overrides).
+- Set `container_name`, `restart: unless-stopped`, `stop_grace_period`.
+- Inject every configurable value with `${VAR:-default}` or `${VAR:?message}`; no hardcoded hostnames, ports, passwords, or paths.
+- Define a `healthcheck` (test + interval + timeout + retries + start_period).
+- Declare `depends_on` with `condition: service_healthy` for datastore dependencies.
+- Configure `logging` with bounded `max-size` / `max-file`.
+- Run as non-root unless technically impossible (documented exception).
+
+Forbidden: `build:`, the deprecated `version:` key, `latest` tags, hostnames, embedded secrets.
+
+## Pre-flight checklist before packaging
+
+- [ ] `VERSION` bumped and committed
+- [ ] `deploy/.env` `APP_VERSION` matches `VERSION`
+- [ ] `CHANGELOG.md` has an entry for this version
+- [ ] Lint passes
+- [ ] `deploy/docker-compose.lan.yml` contains **no** `build:` directive and **no** `version:` key
+- [ ] Any new service added to the dev compose also exists in the LAN compose, tagged `${APP_VERSION}`
+- [ ] Any new env var added to `deploy/.env.example` has a documented `CHANGE_ME` or safe default
+- [ ] New ordered migration files are present in `db/migrations/` for this version
+- [ ] Healthcheck + `depends_on: service_healthy` defined for any new service
+
+## Common pitfalls
+
+- **`ERROR: APP_VERSION is required`** on `docker compose` — shell has no `APP_VERSION`. Run via `make` (which exports from `VERSION`) or `export APP_VERSION=$(cat VERSION)`.
+- **`COMPOSE_PROJECT_NAME` mismatch** — the running stack uses a different project name than `.env`. Either run the one-time `bootstrap-patch-support.sh` or set `COMPOSE_PROJECT_NAME` in `.env` to whatever `docker inspect <one-container>` shows under `com.docker.compose.project`.
+- **`deploy-patch.sh` can't find a bundle** — operator put it in the wrong folder. The script checks `./releases/patches/` (next to `docker-compose.yml`) and `$APP_ROOT/releases/patches/`; copy it to either and rerun with no args.
+- **Patch-id collision** — deleting a patch archive after building doesn't reset `pN` (the scanner also looks at `applied/`). Bump to the next sequence; never reuse.
+- **UI missing after deploy** — nginx root expects `$APP_ROOT/releases/ui/<APP_VERSION>/dist/<app>/index.html`. Re-run `deploy.sh` with a bundle whose `ui/<VERSION>/dist/<app>/` is populated, or build with `SKIP_UI_BUILD=0`.
+- **LAN compose contains `build:`** — breaks the offline contract; every LAN-compose CI/compliance check should fail hard on this.
+- **Secrets in config files instead of `.env`** — duplicate values drift. Keep every secret in `.env`, let the deploy script sync into per-service `config.json` on first install if the service can't read env vars directly.
+- **DB rollback is manual** — document this in every bundle README and in `rollback.sh`'s help text.
+- **First-install vs upgrade detection** — the deploy script should decide "upgrade" from the presence of `$APP_ROOT/.deployed_version` or a non-empty running stack, not from whether `.env` exists.
+
+## Files/scripts to touch most often
+
+| File | Typical change |
+|------|----------------|
+| `VERSION`, `CHANGELOG.md` | Every release |
+| `deploy/.env.example` | New env var, port, or `CHANGE_ME` |
+| `deploy/docker-compose.yml` | Dev-only change (builds) |
+| `deploy/docker-compose.lan.yml` | Operator-facing change — must stay structurally in sync with dev compose |
+| `db/baseline/*.sql` | Greenfield schema only |
+| `db/migrations/*.sql` | New ordered migration |
+| `scripts/package-release.sh`, `scripts/package-patch.sh` | Bundle layout or new artifact inputs |
+| `deploy/scripts/*.sh` | Operator automation |
+
+## When reviewing a repo that claims to follow this model
+
+Quick audit (takes two minutes):
+
+```bash
+test -f VERSION && echo "VERSION: OK"
+grep -l 'build:' deploy/docker-compose.lan.yml && echo "FAIL: LAN compose has build:"
+grep -R 'image:.*:latest' deploy/docker-compose.lan.yml && echo "FAIL: latest tag in LAN compose"
+test -d db/baseline && test -d db/migrations && echo "db/ split: OK"
+test -x scripts/package-release.sh && echo "packager: OK"
+test -x deploy/scripts/deploy.sh && echo "operator deploy: OK"
+test -f deploy/.env.example && echo ".env.example: OK"
+grep -c CHANGE_ME deploy/.env.example     # should be > 0
+```
+
+Every `FAIL:` is a blocker for shipping an offline bundle.
+
+## When this skill is not enough
+
+- Kubernetes / Swarm / multi-node: out of scope — this pattern targets single-node Docker Compose.
+- Cloud-managed datastores (RDS, ElastiCache): out of scope — assume self-hosted, often offline.
+- Specific project conventions (paths, service names, tagging): read the repo's own `DEPLOYMENT-STRATEGY.md` or equivalent; this skill is the *shape*, the repo owns the *content*.

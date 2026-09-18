@@ -1,0 +1,451 @@
+# ---------------------------------------------------------------------------
+# SPECTRA - DEVELOPER stack.
+#
+#   make up            (exports APP_VERSION from ./VERSION)
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#
+# This file BUILDS images.  It is never shipped to an operator; the sealed
+# bundle ships deploy/docker-compose.lan.yml, which is image-only.
+# Defaults here are development conveniences - the LAN stack hardcodes nothing.
+#
+# GPU: the api and worker need optional NVIDIA access.  Compose profiles cannot
+# conditionally *modify* a service (only add or remove whole ones), and a
+# profile-gated duplicate of `api` collides on container_name, so the GPU
+# reservation lives in the overlay deploy/docker-compose.gpu.yml:
+#
+#   make up GPU=1
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.gpu.yml up -d
+#
+# Without the overlay the stack starts on a GPU-less machine unchanged.
+# ---------------------------------------------------------------------------
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${LOG_MAX_SIZE:-10m}"
+    max-file: "${LOG_MAX_FILE:-5}"
+
+x-spectra-env: &spectra-env
+  APP_ENV: "${APP_ENV:-development}"
+  DEPLOYMENT_MODE: "${DEPLOYMENT_MODE:-development}"
+  LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+  LOG_FORMAT: "${LOG_FORMAT:-console}"
+  TZ: "${TZ:-UTC}"
+
+  RELATIONAL_BACKEND: "${RELATIONAL_BACKEND:-postgres}"
+  VECTOR_BACKEND: "${VECTOR_BACKEND:-qdrant}"
+  LEXICAL_BACKEND: "${LEXICAL_BACKEND:-opensearch}"
+  GRAPH_BACKEND: "${GRAPH_BACKEND:-neo4j}"
+  OBJECT_BACKEND: "${OBJECT_BACKEND:-s3}"
+  CACHE_BACKEND: "${CACHE_BACKEND:-redis}"
+
+  POSTGRES_URL: "postgresql+psycopg://${POSTGRES_USER:-spectra}:${POSTGRES_PASSWORD:-spectra}@postgres:5432/${POSTGRES_DB:-spectra}"
+  ENTERPRISE_DATABASE_URL: "postgresql+psycopg://${ENTERPRISE_READONLY_USER:-spectra_readonly}:${ENTERPRISE_READONLY_PASSWORD:-spectra-readonly}@postgres:5432/${ENTERPRISE_DB:-spectra_enterprise}"
+  QDRANT_URL: "http://qdrant:6333"
+  OPENSEARCH_URL: "http://opensearch:9200"
+  NEO4J_URL: "bolt://neo4j:7687"
+  NEO4J_USER: "${NEO4J_USER:-neo4j}"
+  NEO4J_PASSWORD: "${NEO4J_PASSWORD:-spectra-neo4j}"
+  REDIS_URL: "redis://:${REDIS_PASSWORD:-spectra-redis}@redis:6379/0"
+  MINIO_ENDPOINT: "http://minio:9000"
+  MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-spectra}"
+  MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-spectra-minio}"
+  MINIO_BUCKET: "${MINIO_BUCKET:-spectra}"
+  MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+
+  DATA_DIR: /app/data
+  MODEL_DIR: /app/models
+
+  MODEL_PROFILE: "${MODEL_PROFILE:-rtx4090}"
+  MODEL_RUNTIME: "${MODEL_RUNTIME:-auto}"
+  GPU_VRAM_BUDGET_MB: "${GPU_VRAM_BUDGET_MB:-22000}"
+  MODEL_IDLE_EVICT_SECONDS: "${MODEL_IDLE_EVICT_SECONDS:-300}"
+  MODEL_LOAD_TIMEOUT_SECONDS: "${MODEL_LOAD_TIMEOUT_SECONDS:-300}"
+  MODEL_CALL_TIMEOUT_SECONDS: "${MODEL_CALL_TIMEOUT_SECONDS:-120}"
+  MODEL_MAX_RETRIES: "${MODEL_MAX_RETRIES:-2}"
+  OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+  VLLM_BASE_URL: "${VLLM_BASE_URL:-http://host.docker.internal:8001/v1}"
+  OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
+  OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+  FAST_BRAIN_MODEL: "${FAST_BRAIN_MODEL:-Qwen3-8B-Q4_K_M}"
+  DEEP_BRAIN_MODEL: "${DEEP_BRAIN_MODEL:-Qwen3-30B-A3B-Instruct-2507-Q4_K_M}"
+  VISION_MODEL: "${VISION_MODEL:-Qwen3-VL-8B-Instruct-Q4_K_M}"
+  EMBEDDING_MODEL: "${EMBEDDING_MODEL:-BAAI/bge-m3}"
+  MM_EMBEDDING_MODEL: "${MM_EMBEDDING_MODEL:-Qwen3-VL-Embedding-2B}"
+  RERANKER_MODEL: "${RERANKER_MODEL:-BAAI/bge-reranker-v2-m3}"
+  WHISPER_MODEL: "${WHISPER_MODEL:-large-v3}"
+  OCR_ENGINE: "${OCR_ENGINE:-auto}"
+
+  ENABLE_DOCUMENT_AGENT: "${ENABLE_DOCUMENT_AGENT:-true}"
+  ENABLE_IMAGE_AGENT: "${ENABLE_IMAGE_AGENT:-true}"
+  ENABLE_VIDEO_AGENT: "${ENABLE_VIDEO_AGENT:-true}"
+  ENABLE_AUDIO_AGENT: "${ENABLE_AUDIO_AGENT:-true}"
+  ENABLE_DATABASE_AGENT: "${ENABLE_DATABASE_AGENT:-true}"
+  ENABLE_GRAPH_AGENT: "${ENABLE_GRAPH_AGENT:-true}"
+  ENABLE_ENTITY_RESOLUTION: "${ENABLE_ENTITY_RESOLUTION:-true}"
+  ENABLE_HYPOTHESIS_ENGINE: "${ENABLE_HYPOTHESIS_ENGINE:-true}"
+  ENABLE_DISPROOF_AGENT: "${ENABLE_DISPROOF_AGENT:-true}"
+  ENABLE_VERIFIER: "${ENABLE_VERIFIER:-true}"
+  FAST_MODE_ENABLED: "${FAST_MODE_ENABLED:-true}"
+  DEEP_MODE_ENABLED: "${DEEP_MODE_ENABLED:-true}"
+
+  FAST_MAX_TOOL_CALLS: "${FAST_MAX_TOOL_CALLS:-5}"
+  FAST_MAX_LATENCY_SECONDS: "${FAST_MAX_LATENCY_SECONDS:-3}"
+  DEEP_MAX_TOOL_CALLS: "${DEEP_MAX_TOOL_CALLS:-30}"
+  DEEP_MAX_LATENCY_SECONDS: "${DEEP_MAX_LATENCY_SECONDS:-60}"
+  DEEP_MAX_ITERATIONS: "${DEEP_MAX_ITERATIONS:-8}"
+  CANDIDATE_POOL_SIZE: "${CANDIDATE_POOL_SIZE:-200}"
+  RERANK_TOP_K: "${RERANK_TOP_K:-40}"
+  EVIDENCE_TOP_K: "${EVIDENCE_TOP_K:-12}"
+  SUFFICIENCY_THRESHOLD: "${SUFFICIENCY_THRESHOLD:-0.62}"
+
+  MAX_UPLOAD_BYTES: "${MAX_UPLOAD_BYTES:-536870912}"
+  SQL_QUERY_TIMEOUT_SECONDS: "${SQL_QUERY_TIMEOUT_SECONDS:-10}"
+  SQL_MAX_ROWS: "${SQL_MAX_ROWS:-500}"
+  ANTIVIRUS_HOOK: "${ANTIVIRUS_HOOK:-}"
+  DEFAULT_ROLE: "${DEFAULT_ROLE:-analyst}"
+  CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}"
+  APPLICATION_BASE_URL: "${APPLICATION_BASE_URL:-http://localhost:3001}"
+
+services:
+
+  # ======================= datastores ======================================
+
+  postgres:
+    image: "${POSTGRES_IMAGE:-postgres:16.6-alpine}"
+    container_name: spectra-dev-postgres
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-spectra}"
+      POSTGRES_USER: "${POSTGRES_USER:-spectra}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-spectra}"
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${POSTGRES_BIND_ADDR:-127.0.0.1}:${POSTGRES_PUBLISHED_PORT:-5432}:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"${POSTGRES_USER:-spectra}\" -d \"${POSTGRES_DB:-spectra}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging: *default-logging
+    networks: [spectra]
+
+  qdrant:
+    image: "${QDRANT_IMAGE:-qdrant/qdrant:v1.12.4}"
+    container_name: spectra-dev-qdrant
+    restart: unless-stopped
+    stop_grace_period: 20s
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: "6333"
+      QDRANT__SERVICE__GRPC_PORT: "6334"
+      QDRANT__TELEMETRY_DISABLED: "true"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${QDRANT_BIND_ADDR:-127.0.0.1}:${QDRANT_PUBLISHED_PORT:-6333}:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      # The qdrant image ships no curl/wget; bash is present, so probe the port.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging: *default-logging
+    networks: [spectra]
+
+  opensearch:
+    image: "${OPENSEARCH_IMAGE:-opensearchproject/opensearch:2.17.1}"
+    container_name: spectra-dev-opensearch
+    restart: unless-stopped
+    stop_grace_period: 60s
+    environment:
+      discovery.type: single-node
+      cluster.name: "${OPENSEARCH_CLUSTER_NAME:-spectra}"
+      node.name: spectra-opensearch
+      bootstrap.memory_lock: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "${OPENSEARCH_JAVA_OPTS:--Xms1g -Xmx1g}"
+      TZ: "${TZ:-UTC}"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+      nofile: { soft: 65536, hard: 65536 }
+    ports:
+      - "${OPENSEARCH_BIND_ADDR:-127.0.0.1}:${OPENSEARCH_PUBLISHED_PORT:-9200}:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+    logging: *default-logging
+    networks: [spectra]
+
+  neo4j:
+    image: "${NEO4J_IMAGE:-neo4j:5.26.0-community}"
+    container_name: spectra-dev-neo4j
+    restart: unless-stopped
+    stop_grace_period: 60s
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-spectra-neo4j}"
+      NEO4J_PASSWORD: "${NEO4J_PASSWORD:-spectra-neo4j}"
+      NEO4J_server_memory_heap_initial__size: "${NEO4J_HEAP_INITIAL:-512m}"
+      NEO4J_server_memory_heap_max__size: "${NEO4J_HEAP_MAX:-1g}"
+      NEO4J_server_memory_pagecache_size: "${NEO4J_PAGECACHE:-512m}"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${NEO4J_BIND_ADDR:-127.0.0.1}:${NEO4J_HTTP_PUBLISHED_PORT:-7474}:7474"
+      - "${NEO4J_BIND_ADDR:-127.0.0.1}:${NEO4J_BOLT_PUBLISHED_PORT:-7687}:7687"
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u \"${NEO4J_USER:-neo4j}\" -p \"${NEO4J_PASSWORD:-spectra-neo4j}\" 'RETURN 1' >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+    logging: *default-logging
+    networks: [spectra]
+
+  redis:
+    image: "${REDIS_IMAGE:-redis:7.4-alpine}"
+    container_name: spectra-dev-redis
+    restart: unless-stopped
+    stop_grace_period: 20s
+    command:
+      - redis-server
+      - --requirepass
+      - "${REDIS_PASSWORD:-spectra-redis}"
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - "${REDIS_MAXMEMORY:-512mb}"
+      - --maxmemory-policy
+      - "${REDIS_MAXMEMORY_POLICY:-allkeys-lru}"
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-spectra-redis}"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${REDIS_BIND_ADDR:-127.0.0.1}:${REDIS_PUBLISHED_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    logging: *default-logging
+    networks: [spectra]
+
+  # MinIO publishes to quay.io; the Docker Hub `minio/minio` path no longer
+  # serves images and fails with "pull access denied".
+  minio:
+    image: "${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2024-10-13T13-34-11Z}"
+    container_name: spectra-dev-minio
+    restart: unless-stopped
+    stop_grace_period: 30s
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-spectra}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-spectra-minio}"
+      MINIO_REGION: "${MINIO_REGION:-us-east-1}"
+      TZ: "${TZ:-UTC}"
+    ports:
+      - "${MINIO_BIND_ADDR:-127.0.0.1}:${MINIO_PUBLISHED_PORT:-9000}:9000"
+      - "${MINIO_BIND_ADDR:-127.0.0.1}:${MINIO_CONSOLE_PUBLISHED_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    logging: *default-logging
+    networks: [spectra]
+
+  # One-shot bucket provisioning.  Documented healthcheck exception: the
+  # container exits after a few seconds, so dependants wait on
+  # service_completed_successfully instead.
+  minio-init:
+    image: "${MINIO_MC_IMAGE:-quay.io/minio/mc:RELEASE.2024-10-08T09-37-26Z}"
+    container_name: spectra-dev-minio-init
+    restart: "no"
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:-spectra}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-spectra-minio}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-spectra}"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        mc alias set spectra http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing "spectra/$${MINIO_BUCKET}"
+        mc anonymous set none "spectra/$${MINIO_BUCKET}" || true
+        echo "bucket $${MINIO_BUCKET} ready"
+    logging: *default-logging
+    networks: [spectra]
+
+  # ======================= application =====================================
+
+  api:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: runtime
+      args:
+        INSTALL_ML: "${INSTALL_ML:-0}"
+        INSTALL_BACKENDS: "${INSTALL_BACKENDS:-1}"
+    image: "spectra-api:${APP_VERSION:-dev}"
+    container_name: spectra-dev-api
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      <<: *spectra-env
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      qdrant: { condition: service_healthy }
+      opensearch: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    ports:
+      - "${API_BIND_ADDR:-0.0.0.0}:${API_PUBLISHED_PORT:-8000}:8000"
+    volumes:
+      - spectra-data:/app/data
+      - spectra-models:/app/models
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    logging: *default-logging
+    networks: [spectra]
+
+  worker:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: worker
+      args:
+        INSTALL_ML: "${INSTALL_ML:-0}"
+        INSTALL_BACKENDS: "${INSTALL_BACKENDS:-1}"
+    image: "spectra-worker:${APP_VERSION:-dev}"
+    container_name: spectra-dev-worker
+    restart: unless-stopped
+    stop_grace_period: 60s
+    environment:
+      <<: *spectra-env
+      SPECTRA_API_URL: "http://api:8000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      qdrant: { condition: service_healthy }
+      opensearch: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    volumes:
+      - spectra-data:/app/data
+      - spectra-models:/app/models
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f spectra_worker >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    logging: *default-logging
+    networks: [spectra]
+
+  frontend:
+    build:
+      context: ../apps/frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}"
+    image: "spectra-frontend:${APP_VERSION:-dev}"
+    container_name: spectra-dev-frontend
+    restart: unless-stopped
+    stop_grace_period: 20s
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      SPECTRA_API_URL: "http://api:8000"
+      NEXT_PUBLIC_API_BASE_URL: "${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}"
+      NEXT_PUBLIC_APPLICATION_BASE_URL: "${APPLICATION_BASE_URL:-http://localhost:3001}"
+      TZ: "${TZ:-UTC}"
+    depends_on:
+      api: { condition: service_healthy }
+    ports:
+      - "${FRONTEND_BIND_ADDR:-0.0.0.0}:${FRONTEND_PUBLISHED_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    logging: *default-logging
+    networks: [spectra]
+
+  mock-enterprise:
+    build:
+      context: ../apps/mock-enterprise
+      dockerfile: Dockerfile
+    image: "spectra-mock-enterprise:${APP_VERSION:-dev}"
+    container_name: spectra-dev-mock-enterprise
+    restart: unless-stopped
+    stop_grace_period: 20s
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: 0.0.0.0
+      # Least privilege: the demo application only ever reads.
+      DATABASE_URL: "postgresql://${ENTERPRISE_READONLY_USER:-spectra_readonly}:${ENTERPRISE_READONLY_PASSWORD:-spectra-readonly}@postgres:5432/${ENTERPRISE_DB:-spectra_enterprise}"
+      ENTERPRISE_SCHEMA: "${ENTERPRISE_SCHEMA:-enterprise}"
+      TZ: "${TZ:-UTC}"
+    depends_on:
+      postgres: { condition: service_healthy }
+    ports:
+      - "${MOCK_ENTERPRISE_BIND_ADDR:-0.0.0.0}:${MOCK_ENTERPRISE_PUBLISHED_PORT:-3001}:3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    logging: *default-logging
+    networks: [spectra]
+
+networks:
+  spectra:
+    name: "${COMPOSE_PROJECT_NAME:-spectra}-dev-net"
+    driver: bridge
+
+volumes:
+  pg-data:
+  qdrant-data:
+  opensearch-data:
+  neo4j-data:
+  neo4j-logs:
+  redis-data:
+  minio-data:
+  spectra-data:
+  spectra-models:

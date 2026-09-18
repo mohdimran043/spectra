@@ -1,0 +1,21 @@
+# Enterprise application deep-link resolution.  A canonical entity type maps to
+# a URL template; {id} is substituted with the *resolved* canonical id only.
+version: 1
+base_url_env: APPLICATION_BASE_URL
+applications:
+  customer:
+    label: "Open Customer"
+    url_template: "{base}/customers/{id}"
+    id_pattern: "^C[0-9]{4,8}$"
+  transaction:
+    label: "Open Transaction"
+    url_template: "{base}/transactions/{id}"
+    id_pattern: "^TX[0-9]{4,8}$"
+  incident:
+    label: "Open Incident"
+    url_template: "{base}/incidents/{id}"
+    id_pattern: "^INC[0-9]{3,8}$"
+  asset:
+    label: "Open Asset"
+    url_template: "{base}/assets/{id}"
+    id_pattern: "^AST[0-9]{3,8}$"

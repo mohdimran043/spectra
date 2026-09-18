@@ -1,0 +1,22 @@
+[
+  {
+    "alternatives": [
+      "Documents",
+      "Videos",
+      "Database"
+    ],
+    "depends_on": [
+      "vision",
+      "ocr"
+    ],
+    "enabled": false,
+    "label": "Vision Agent",
+    "name": "image",
+    "ready": false,
+    "reason": "Disabled in the Agent Control Center.",
+    "state": "disabled",
+    "tools": [
+      "search_images"
+    ]
+  }
+]

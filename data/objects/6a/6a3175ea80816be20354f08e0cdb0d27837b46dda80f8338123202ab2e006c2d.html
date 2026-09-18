@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Wiki: auth-service</title></head><body>
+<h1>Wiki: auth-service</h1>
+<p class="banner">Document DOC5504 | Wiki: auth-service | version 1 (current)</p>
+<h2>Overview</h2>
+<p>auth-service issues and validates session tokens for every customer-facing surface. It stores sessions in session-db.</p>
+<h2>Callers</h2>
+<p>payment-gateway calls token validation on the authorisation path and blocks on the answer, so authentication latency is payment latency.</p>
+<h2>Ownership</h2>
+<p>Owner: Marcus Halvorsen. Escalation: Amara Novak.</p>
+<h2>Known failure modes</h2>
+<p>Token validation latency above two seconds exhausts the payment-gateway connection pool. See INC9344.</p>
+</body></html>

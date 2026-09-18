@@ -1,0 +1,19 @@
+{
+  "agent": "database_agent",
+  "completed_at": "2026-03-11T10:42:01Z",
+  "error": null,
+  "evidence_ids": [
+    "evd_1"
+  ],
+  "input_summary": "transaction TX82931",
+  "investigation_id": "inv_abc123",
+  "latency_ms": 12.4,
+  "metadata": {},
+  "output_summary": "1 record found",
+  "sequence": 3,
+  "started_at": "2026-03-11T10:42:01Z",
+  "status": "ok",
+  "step_id": "step_1",
+  "title": "Database Agent",
+  "tool": "query_database"
+}

@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-09-18T07:25:02.574788Z",
+  "components": {
+    "models": {
+      "detail": "no GPU",
+      "status": "degraded"
+    },
+    "vectors": {
+      "backend": "embedded",
+      "status": "ok"
+    }
+  },
+  "degraded": true,
+  "deployment_mode": "development",
+  "status": "degraded",
+  "version": "1.0.0"
+}

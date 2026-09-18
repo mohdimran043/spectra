@@ -1,0 +1,22 @@
+{
+  "aliases": [
+    "Txn 82931",
+    "Transaction #82931"
+  ],
+  "attributes": {},
+  "canonical_name": "TX82931",
+  "confidence": 1.0,
+  "entity_id": "ent_transaction_ab12",
+  "entity_type": "transaction",
+  "first_seen": "2026-09-18T07:25:02.574991Z",
+  "last_seen": "2026-09-18T07:25:02.574992Z",
+  "mention_count": 7,
+  "modalities": [
+    "document",
+    "video"
+  ],
+  "normalized_keys": [
+    "TX82931"
+  ],
+  "source_ids": []
+}

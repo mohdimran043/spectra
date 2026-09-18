@@ -1,0 +1,28 @@
+# Configurable source reliability.  These are *defaults*, inspectable and
+# overridable per source in the Source Registry - never hard-coded truth values.
+version: 1
+weights:
+  authority: 0.35      # how authoritative the source class is for the claim
+  freshness: 0.20      # recency of the underlying record
+  specificity: 0.20    # does the evidence name the entity explicitly
+  corroboration: 0.15  # independent agreement from other sources
+  version_status: 0.10 # superseded / draft / approved
+
+authority_by_kind:
+  database: 0.95
+  application_record: 0.92
+  document: 0.75
+  audio: 0.65
+  video: 0.65
+  image: 0.60
+  external_api: 0.55
+
+version_status_score:
+  approved: 1.0
+  final: 1.0
+  current: 0.9
+  draft: 0.5
+  superseded: 0.2
+  unknown: 0.6
+
+freshness_half_life_days: 180

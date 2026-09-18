@@ -1,0 +1,14 @@
+Access Recertification Note 00001 - fraud-service
+Document DOC1270 | Access Recertification Note 00001 - fraud-service | version 1 (current)
+
+Access Recertification Note - fraud-service
+-------------------------------------------
+No customer-visible impact was recorded for fraud-service during the period under review.
+Queue depth for fraud-service stayed inside the agreed envelope and required no intervention.
+Runbook links for fraud-service were checked and two dead links were replaced.
+Dashboards for fraud-service were refreshed and the stale panels were retired.
+
+References
+----------
+Related ticket INC6278 (resolved), opened 2023-11-17.
+

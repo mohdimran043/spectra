@@ -1,0 +1,14 @@
+Documentation Gap Report 00003 - fraud-service
+Document DOC9754 | Documentation Gap Report 00003 - fraud-service | version 1 (current)
+
+Documentation Gap Report - fraud-service
+----------------------------------------
+Alert thresholds for fraud-service were reviewed; no threshold was changed this cycle.
+Runbook links for fraud-service were checked and two dead links were replaced.
+Alert thresholds for fraud-service were reviewed; no threshold was changed this cycle.
+Dashboards for fraud-service were refreshed and the stale panels were retired.
+
+References
+----------
+Related ticket INC8954 (resolved), opened 2024-03-10.
+

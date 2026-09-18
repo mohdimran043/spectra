@@ -1,0 +1,304 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================================================================
+   THE EXHIBIT RECORD — design tokens
+   Ply is the only rank: board → leaf → overlay. Nothing else elevates.
+   Colour is territory: hue is spent on modality identity and status semantics.
+   =========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* --- ply ------------------------------------------------------------- */
+  --board: #edebe4;
+  --board-sunk: #e3e0d7;
+  --leaf: #fbfaf7;
+  --leaf-raised: #ffffff;
+  --overlay: #ffffff;
+  --scrim: rgba(23, 22, 20, 0.44);
+
+  /* --- rules ----------------------------------------------------------- */
+  --rule: #d6d2c7;
+  --rule-strong: #b4ae9f;
+
+  /* --- ink ------------------------------------------------------------- */
+  --ink-0: #17171a;
+  --ink-1: #3d3e44;
+  --ink-2: #63646c;
+  --ink-3: #8b8c94;
+  --ink-inverse: #fbfaf7;
+
+  /* --- status semantics ------------------------------------------------ */
+  --stamp: #a3341e; /* contradicted · disproved · error · stop */
+  --stamp-weak: #f0dcd6;
+  --seal: #1c6349; /* supported · healthy · admitted */
+  --seal-weak: #d6e7df;
+  --caution: #7d5408; /* weak · degraded · partial */
+  --caution-weak: #f2e6cc;
+  --held: #2b5877; /* open · pending · neutral */
+  --held-weak: #d9e5ed;
+  --focus: #1f6fb2;
+
+  /* --- modality territory ---------------------------------------------- */
+  --mod-document: #35578f;
+  --mod-image: #6f4390;
+  --mod-video: #9c4319;
+  --mod-audio: #14675e;
+  --mod-database: #62520f;
+  --mod-graph: #843462;
+  --mod-external: #4f545e;
+
+  /* --- geometry -------------------------------------------------------- */
+  --rail-w: 13.5rem;
+  --header-h: 2.75rem;
+  --hairline: 1px;
+
+  /* --- depth: offset + soft blur, never a halo ------------------------- */
+  --shadow-leaf: 0 1px 2px rgba(23, 22, 20, 0.05), 0 2px 8px -4px rgba(23, 22, 20, 0.1);
+  --shadow-overlay: 0 12px 20px -8px rgba(23, 22, 20, 0.22), 0 32px 64px -32px rgba(23, 22, 20, 0.34);
+
+  /* --- type ------------------------------------------------------------ */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --board: #0e1013;
+  --board-sunk: #090a0d;
+  --leaf: #16191e;
+  --leaf-raised: #1c2027;
+  --overlay: #1a1e24;
+  --scrim: rgba(4, 5, 7, 0.68);
+
+  --rule: #2a2f37;
+  --rule-strong: #3d444f;
+
+  --ink-0: #e9e7e1;
+  --ink-1: #bdbcb8;
+  --ink-2: #92938f;
+  --ink-3: #6d6f6f;
+  --ink-inverse: #0e1013;
+
+  --stamp: #e2715a;
+  --stamp-weak: #3a1f1a;
+  --seal: #4fb490;
+  --seal-weak: #16302a;
+  --caution: #d3a248;
+  --caution-weak: #33290f;
+  --held: #7dabcc;
+  --held-weak: #182934;
+  --focus: #5fa9e6;
+
+  --mod-document: #7fa4dd;
+  --mod-image: #b189d6;
+  --mod-video: #e0855d;
+  --mod-audio: #4fb6a9;
+  --mod-database: #c0aa4e;
+  --mod-graph: #d181ae;
+  --mod-external: #9aa0ab;
+
+  --shadow-leaf: 0 1px 2px rgba(0, 0, 0, 0.36), 0 2px 10px -5px rgba(0, 0, 0, 0.5);
+  --shadow-overlay: 0 14px 24px -10px rgba(0, 0, 0, 0.6), 0 40px 72px -36px rgba(0, 0, 0, 0.8);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --board: #0e1013;
+    --board-sunk: #090a0d;
+    --leaf: #16191e;
+    --leaf-raised: #1c2027;
+    --overlay: #1a1e24;
+    --scrim: rgba(4, 5, 7, 0.68);
+
+    --rule: #2a2f37;
+    --rule-strong: #3d444f;
+
+    --ink-0: #e9e7e1;
+    --ink-1: #bdbcb8;
+    --ink-2: #92938f;
+    --ink-3: #6d6f6f;
+    --ink-inverse: #0e1013;
+
+    --stamp: #e2715a;
+    --stamp-weak: #3a1f1a;
+    --seal: #4fb490;
+    --seal-weak: #16302a;
+    --caution: #d3a248;
+    --caution-weak: #33290f;
+    --held: #7dabcc;
+    --held-weak: #182934;
+    --focus: #5fa9e6;
+
+    --mod-document: #7fa4dd;
+    --mod-image: #b189d6;
+    --mod-video: #e0855d;
+    --mod-audio: #4fb6a9;
+    --mod-database: #c0aa4e;
+    --mod-graph: #d181ae;
+    --mod-external: #9aa0ab;
+
+    --shadow-leaf: 0 1px 2px rgba(0, 0, 0, 0.36), 0 2px 10px -5px rgba(0, 0, 0, 0.5);
+    --shadow-overlay: 0 14px 24px -10px rgba(0, 0, 0, 0.6), 0 40px 72px -36px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* ===========================================================================
+   Base
+   =========================================================================== */
+
+@layer base {
+  * {
+    border-color: var(--rule);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--board);
+    color: var(--ink-0);
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    line-height: 1.3125rem;
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Browser surfaces belong to the design system, not to the browser. */
+  ::selection {
+    background-color: var(--held-weak);
+    color: var(--ink-0);
+  }
+
+  :where(input, textarea) {
+    caret-color: var(--focus);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+
+  /* Numerals in an instrument are always measured against each other. */
+  :where(td, th, .tabular, time, output) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule-strong) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--rule-strong);
+    border: 3px solid var(--board);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--ink-3);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* ===========================================================================
+   The record's own devices
+   =========================================================================== */
+
+@layer components {
+  /* The tab rail's active tab extends into the board and becomes the ground. */
+  .tab-extend {
+    position: relative;
+  }
+
+  .tab-extend::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: -1px;
+    width: 2px;
+    background-color: currentColor;
+  }
+
+  /* A ruled ground: the transcript's hairline every 21px. */
+  .ruled {
+    background-image: linear-gradient(to bottom, var(--rule) 1px, transparent 1px);
+    background-size: 100% 21px;
+  }
+
+  /* Loading is a rule being drawn, never a spinner. */
+  .rule-progress::after {
+    content: '';
+    display: block;
+    height: 1px;
+    background-color: var(--focus);
+    animation: rule-sweep 1500ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+
+  .skeleton-line {
+    background-color: var(--rule);
+    opacity: 0.55;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .skeleton-line {
+      animation: skeleton-breathe 1600ms ease-in-out infinite;
+    }
+  }
+}
+
+@keyframes skeleton-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* One authored moment, and its reduced-motion still. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .rule-progress::after {
+    animation: none;
+    transform: scaleX(1);
+    opacity: 0.6;
+  }
+}

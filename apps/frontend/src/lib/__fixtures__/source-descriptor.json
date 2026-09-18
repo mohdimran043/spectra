@@ -1,0 +1,26 @@
+[
+  {
+    "asset_count": 412,
+    "connection": {},
+    "created_at": "2026-09-18T07:25:02.574828Z",
+    "credential_ref": null,
+    "enabled": true,
+    "last_sync": null,
+    "modalities": [
+      "document"
+    ],
+    "name": "Corporate Documents",
+    "permissions": [
+      "admin",
+      "analyst",
+      "viewer"
+    ],
+    "record_count": 0,
+    "reliability_override": null,
+    "reliability_reason": null,
+    "source_id": "src_docs",
+    "status": "healthy",
+    "status_detail": null,
+    "type": "s3"
+  }
+]

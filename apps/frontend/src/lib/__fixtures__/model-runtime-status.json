@@ -1,0 +1,60 @@
+{
+  "active_role": null,
+  "degraded": true,
+  "degraded_reasons": [
+    "gpu: driver/library version mismatch"
+  ],
+  "gpu": {
+    "available": false,
+    "budget_mb": 22000.0,
+    "detail": "nvidia-smi: Driver/library version mismatch",
+    "driver_version": null,
+    "free_mb": 0.0,
+    "name": null,
+    "temperature_c": null,
+    "total_mb": 0.0,
+    "used_mb": 0.0,
+    "utilisation_pct": null
+  },
+  "models": [
+    {
+      "active_model": "qwen3:30b-a3b",
+      "active_runtime": "ollama",
+      "call_count": 12,
+      "candidates": [
+        {
+          "available": true,
+          "compute_type": null,
+          "device": "auto",
+          "dimension": null,
+          "model": "qwen3:30b-a3b",
+          "runtime": "ollama",
+          "unavailable_reason": null,
+          "vram_mb": 19000
+        }
+      ],
+      "degraded": false,
+      "degraded_reason": null,
+      "device": "cpu",
+      "dimension": null,
+      "enabled": true,
+      "error_count": 0,
+      "last_error": null,
+      "last_used_at": null,
+      "load_count": 0,
+      "loaded_at": null,
+      "purpose": "Planning and synthesis",
+      "role": "deep_brain",
+      "state": "loaded",
+      "total_latency_ms": 240000.0,
+      "unload_count": 0,
+      "vram_mb": 0
+    }
+  ],
+  "profile": "rtx4090",
+  "queue_depth": 0,
+  "recent_events": [],
+  "resident_roles": [
+    "deep_brain"
+  ]
+}

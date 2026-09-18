@@ -1,0 +1,10 @@
+On-call handover note
+Document DOC5508 | On-call handover note | version 1 (current)
+
+Handover
+--------
+INC9344 is resolved as of 03:58 UTC. Watch authorisation success rate for another 24 hours.
+If anyone asks, Incident #9344 is the same ticket under a different reference style.
+Merchant ticket references payment reference 83155; refund not required, no funds moved.
+Next shift: Helena Okonkwo.
+

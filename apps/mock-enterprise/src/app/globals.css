@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Utilitarian internal-tooling baseline: high contrast, dense, no decoration.
+ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-white text-[13px] leading-5 text-ink antialiased;
+  }
+
+  a {
+    @apply text-blue-800 underline underline-offset-2;
+  }
+
+  a:hover {
+    @apply text-blue-900;
+  }
+
+  :focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+  }
+
+  th,
+  td {
+    @apply align-top;
+  }
+}
+
+@layer components {
+  .field-label {
+    @apply text-xxs font-semibold uppercase tracking-wide text-ink-muted;
+  }
+
+  .panel {
+    @apply border border-line bg-white;
+  }
+
+  .panel-title {
+    @apply border-b border-line bg-surface px-3 py-2 text-xs font-bold uppercase tracking-wide text-ink;
+  }
+
+  .data-table {
+    @apply w-full border-collapse text-left text-[13px];
+  }
+
+  .data-table th {
+    @apply border-b border-line bg-surface px-3 py-2 text-xxs font-bold uppercase tracking-wide text-ink-muted;
+  }
+
+  .data-table td {
+    @apply border-b border-line px-3 py-2;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-blue-50;
+  }
+}

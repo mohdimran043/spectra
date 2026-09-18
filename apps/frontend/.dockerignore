@@ -1,0 +1,32 @@
+# Build context filter for this app's image (the Dockerfile beside this file).
+# The context is this directory only, so everything here is app-local.
+
+node_modules
+.next
+out
+dist
+build
+coverage
+.turbo
+
+.env
+.env.*
+!.env.example
+
+.git
+.gitignore
+.vscode
+.idea
+*.log
+npm-debug.log*
+.DS_Store
+
+# Test and design artefacts are not needed in the runtime image.
+**/*.test.ts
+**/*.test.tsx
+**/__fixtures__
+vitest.config.ts
+DESIGN.md
+PRODUCT.md
+.impeccable
+tsconfig.tsbuildinfo

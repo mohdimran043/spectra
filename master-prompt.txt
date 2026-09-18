@@ -1,0 +1,4127 @@
+# MASTER IMPLEMENTATION PROMPT — SPECTRA
+
+## Project
+
+Build the complete production-oriented master's project:
+
+# **SPECTRA**
+
+### **Hypothesis-Driven Multimodal Enterprise Investigation Agent**
+
+Formal description:
+
+> SPECTRA is an agentic enterprise investigation platform that autonomously investigates questions across documents, images, audio, videos, structured databases, and configurable external sources. It resolves entities across modalities, generates and tests competing hypotheses, retrieves supporting and disconfirming evidence, detects contradictions, reconstructs timelines, maintains an evidence graph, verifies conclusions, exposes provenance, and links discovered entities to corresponding enterprise application records.
+
+The system must be fully runnable on a single **RTX 4090 24 GB VRAM** development machine.
+
+The architecture must be designed so that the same system can later scale to **TBs of documents/images/video and millions or billions of database records** without requiring a fundamental rewrite.
+
+---
+
+# 0. NON-NEGOTIABLE EXECUTION RULE
+
+You are the implementation agent.
+
+Do NOT merely give me:
+
+* architecture suggestions
+* pseudocode
+* TODO lists
+* partial skeletons
+* mock APIs
+* placeholder screens
+* "future implementation" comments
+* fake AI responses
+
+Actually build the project.
+
+Your responsibilities are:
+
+1. Inspect the existing repository.
+2. Understand what is already present.
+3. Reuse good existing code where appropriate.
+4. Refactor poor architecture where necessary.
+5. Implement the complete system.
+6. Run the project locally.
+7. Run automated tests.
+8. Fix errors you encounter.
+9. Create realistic demo data.
+10. Demonstrate every modality independently.
+11. Demonstrate the unified agent.
+12. Update `progress.md` after every meaningful implementation milestone.
+13. Keep the project runnable after each phase.
+14. Do not stop after creating architecture documentation.
+15. Continue implementation until the acceptance criteria at the end of this prompt are satisfied.
+
+Do not ask me for confirmation before implementing obvious engineering decisions.
+
+When there are multiple reasonable technical choices, choose the one that best satisfies:
+
+**correctness > reproducibility > 4090 compatibility > maintainability > production scalability**
+
+---
+
+# 1. IMPORTANT CHANGE FROM PREVIOUS ARCHITECTURE
+
+## REMOVE LAKESENSE COMPLETELY
+
+Do NOT depend on, import, clone, embed, or require the LakeSense repository.
+
+The project must be completely independent.
+
+There must be:
+
+* no LakeSense service
+* no LakeSense library
+* no LakeSense database dependency
+* no LakeSense ingestion contract
+* no LakeSense-specific code
+
+Instead, SPECTRA itself must provide its own ingestion/indexing layer.
+
+The architecture must still keep **INGESTION SEPARATE FROM SEARCH**.
+
+---
+
+# 2. CORE ARCHITECTURAL PRINCIPLE
+
+Create two clearly separated pipelines.
+
+## Pipeline A — INGESTION / INDEXING
+
+```text
+Source
+   ↓
+Connector / Upload
+   ↓
+Content extraction
+   ↓
+Normalization
+   ↓
+Metadata extraction
+   ↓
+OCR / ASR / vision processing
+   ↓
+Chunking / scene segmentation
+   ↓
+Entity extraction
+   ↓
+Embeddings
+   ↓
+Search indexes
+   ↓
+Knowledge / Evidence Graph
+```
+
+## Pipeline B — SEARCH / INVESTIGATION
+
+```text
+User Query / Image Upload
+            ↓
+      Query Understanding
+            ↓
+       SPECTRA BRAIN
+            ↓
+      Plan / Hypotheses
+            ↓
+      Select tools/sources
+            ↓
+       Retrieve evidence
+            ↓
+      Entity Resolution
+            ↓
+      Evidence Graph
+            ↓
+ Support Search + Disproof Search
+            ↓
+       Contradiction Check
+            ↓
+          Verify
+            ↓
+       Confidence Decision
+            ↓
+ Answer + Evidence + Provenance
+            ↓
+ Enterprise Application Links
+```
+
+The search pipeline must NEVER need to process raw TB-scale media at query time.
+
+---
+
+# 3. TECHNOLOGY STACK
+
+Use a clean monorepo.
+
+Preferred stack:
+
+## Frontend
+
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* shadcn/ui or equivalent accessible component primitives
+* SSE or WebSocket for live agent traces
+* Recharts/ECharts for analytics
+* React Query/TanStack Query
+* Zod for client validation
+
+## Backend
+
+* Python
+* FastAPI
+* Pydantic
+* AsyncIO
+* SQLAlchemy
+* Alembic
+
+## Agent orchestration
+
+Use an explicit agent state machine / LangGraph-style architecture.
+
+The actual investigation logic must remain understandable and testable.
+
+Do NOT hide the entire system behind an opaque framework.
+
+## Databases
+
+* PostgreSQL — application/control-plane/database-demo data
+* Qdrant — dense/sparse/multimodal vector retrieval
+* OpenSearch — lexical/BM25/full-text search and large-scale metadata search
+* Neo4j — entity/evidence/investigation graph
+* Redis — caching, job state and short-lived agent state
+
+## Object storage
+
+* MinIO locally
+* S3-compatible interface
+
+## Media
+
+* FFmpeg
+* PySceneDetect
+* faster-whisper
+* PaddleOCR
+* OpenCV
+
+## Models
+
+Implement a model abstraction layer so models can be changed without changing agent logic.
+
+---
+
+# 4. 4090 MODEL PROFILE
+
+The system MUST have a dedicated:
+
+```text
+MODEL_PROFILE=rtx4090
+```
+
+profile.
+
+Do NOT assume all models can remain permanently loaded into 24 GB VRAM.
+
+Implement a:
+
+# Model Runtime Manager
+
+Responsibilities:
+
+* model registry
+* lazy loading
+* GPU memory detection
+* model unload
+* model switching
+* health checks
+* timeout
+* retry
+* OOM recovery
+* CPU fallback when configured
+* model usage metrics
+
+The system must allow sequential model execution on one GPU.
+
+Example:
+
+```text
+Brain model
+    ↓ unload
+Vision model
+    ↓ unload
+Embedding model
+    ↓ unload
+Reranker
+```
+
+Do not create a design that requires several 20 GB models simultaneously on a 24 GB card.
+
+---
+
+# 5. RECOMMENDED MODEL REGISTRY
+
+Implement configurable model choices.
+
+Default development profile:
+
+## Main Deep Brain
+
+```text
+Qwen3-30B-A3B-Instruct-2507
+Q4_K_M
+GGUF
+```
+
+Use it for:
+
+* complex planning
+* hypothesis generation
+* investigation
+* evidence synthesis
+* contradiction reasoning
+* final answer
+
+## Fast Brain / Router
+
+Use a smaller Qwen3 model, preferably:
+
+```text
+Qwen3-8B
+```
+
+Use for:
+
+* intent classification
+* query rewriting
+* simple routing
+* simple tool selection
+* cheap questions
+* fast mode
+
+## Vision model
+
+```text
+Qwen3-VL-8B-Instruct
+Q4_K_M
+```
+
+Use for:
+
+* uploaded images
+* screenshots
+* diagrams
+* scanned visual documents
+* keyframes
+* visual entity extraction
+* visual verification
+
+## Multimodal embedding
+
+```text
+Qwen3-VL-Embedding-2B
+```
+
+Use for:
+
+* image embeddings
+* text-to-image retrieval
+* image-to-image retrieval
+* cross-modal matching
+* visual document retrieval
+
+## Multimodal reranker
+
+```text
+Qwen3-VL-Reranker-2B
+```
+
+Use after initial retrieval.
+
+## Text embedding
+
+Use:
+
+```text
+BGE-M3
+```
+
+for:
+
+* documents
+* transcripts
+* metadata
+* exact semantic text retrieval
+
+## Speech
+
+Use:
+
+```text
+faster-whisper large-v3
+```
+
+Use it during ingestion to produce:
+
+* transcript
+* timestamps
+* segments
+* optionally speaker segments
+
+## OCR
+
+Use:
+
+```text
+PaddleOCR
+```
+
+with VLM verification when necessary.
+
+---
+
+# 6. MODEL ABSTRACTION
+
+Create:
+
+```text
+services/model_gateway/
+```
+
+with a registry such as:
+
+```yaml
+models:
+  fast_brain:
+    enabled: true
+    provider: local
+    model: Qwen3-8B
+
+  deep_brain:
+    enabled: true
+    provider: local
+    model: Qwen3-30B-A3B-Instruct-2507-Q4_K_M
+
+  vision:
+    enabled: true
+    model: Qwen3-VL-8B-Instruct-Q4_K_M
+
+  embedding:
+    enabled: true
+    model: Qwen3-VL-Embedding-2B
+
+  reranker:
+    enabled: true
+    model: Qwen3-VL-Reranker-2B
+
+  speech:
+    enabled: true
+    model: faster-whisper-large-v3
+```
+
+Do not hard-code model names throughout the application.
+
+---
+
+# 7. MODEL AVAILABILITY CONTROLS
+
+Implement feature flags:
+
+```env
+ENABLE_DOCUMENT_AGENT=true
+ENABLE_IMAGE_AGENT=true
+ENABLE_VIDEO_AGENT=true
+ENABLE_AUDIO_AGENT=true
+ENABLE_DATABASE_AGENT=true
+ENABLE_GRAPH_AGENT=true
+ENABLE_ENTITY_RESOLUTION=true
+ENABLE_VERIFIER=true
+ENABLE_DISPROOF_AGENT=true
+ENABLE_HYPOTHESIS_ENGINE=true
+
+FAST_MODE_ENABLED=true
+DEEP_MODE_ENABLED=true
+```
+
+The frontend must expose an:
+
+# Agent Control Center
+
+The user can enable/disable:
+
+```text
+✓ Documents
+✓ Images
+✓ Videos
+✓ Audio
+✓ Database
+✓ Knowledge Graph
+✓ Entity Resolution
+✓ Verification
+✓ Disproof
+```
+
+When an agent is disabled:
+
+* the Brain must know it is unavailable
+* the Brain must not attempt to invoke it
+* the UI must clearly show it as disabled
+* search must gracefully degrade
+* no crashes
+* no fake results
+
+Example:
+
+```text
+VISION AGENT
+Status: Disabled
+
+Reason:
+User disabled vision for this investigation.
+
+Available alternatives:
+Documents
+Videos
+Database
+```
+
+---
+
+# 8. DIRECT USER UPLOADS
+
+The user must be able to directly upload:
+
+## Images
+
+Formats:
+
+* JPG
+* JPEG
+* PNG
+* WEBP
+* TIFF
+
+## Audio
+
+Formats:
+
+* WAV
+* MP3
+* M4A
+* FLAC
+* AAC
+
+## Video
+
+Formats:
+
+* MP4
+* MOV
+* MKV
+* WEBM
+* AVI
+
+## Documents
+
+At minimum:
+
+* PDF
+* DOCX
+* PPTX
+* XLSX
+* CSV
+* TXT
+* Markdown
+* JSON
+* HTML
+
+Provide a drag-and-drop upload UI.
+
+Uploads must be processed asynchronously.
+
+Show:
+
+```text
+Uploading
+      ↓
+Queued
+      ↓
+Processing
+      ↓
+Extracting
+      ↓
+Embedding
+      ↓
+Indexed
+      ↓
+Ready
+```
+
+---
+
+# 9. EXTERNAL SOURCE CONNECTORS
+
+Create a generic connector framework:
+
+```python
+class SourceConnector:
+    connect()
+    validate()
+    discover()
+    fetch()
+    metadata()
+    checkpoint()
+    close()
+```
+
+Implement at minimum:
+
+### Local folder
+
+```text
+/data/sources/
+```
+
+### S3-compatible storage
+
+Support:
+
+* AWS S3
+* MinIO
+
+### PostgreSQL
+
+### MySQL
+
+### SQLite
+
+### REST/JSON API
+
+The architecture must allow future:
+
+* SharePoint
+* OneDrive
+* Google Drive
+* Elasticsearch
+* OpenSearch
+* Kafka
+* message queues
+* object stores
+
+without modifying the agent.
+
+---
+
+# 10. SOURCE CATALOG
+
+Create a Source Registry.
+
+Every source has:
+
+```text
+source_id
+name
+type
+connection
+status
+last_sync
+record_count
+asset_count
+permissions
+health
+```
+
+Example:
+
+```text
+Corporate Documents
+type: S3
+status: Healthy
+
+Customer Database
+type: PostgreSQL
+status: Healthy
+
+Engineering Videos
+type: Local Folder
+status: Healthy
+```
+
+Frontend:
+
+```text
+Sources
+ ├── Documents
+ ├── Images
+ ├── Videos
+ ├── Audio
+ └── Databases
+```
+
+---
+
+# 11. DOCUMENT INGESTION
+
+For every document:
+
+```text
+Document
+ ↓
+file type detection
+ ↓
+content extraction
+ ↓
+page detection
+ ↓
+layout extraction
+ ↓
+tables
+ ↓
+images
+ ↓
+OCR
+ ↓
+semantic chunks
+ ↓
+metadata
+ ↓
+entities
+ ↓
+embeddings
+ ↓
+BM25 index
+ ↓
+vector index
+ ↓
+graph links
+```
+
+Preserve:
+
+* document ID
+* page number
+* section
+* paragraph
+* bounding box if available
+* original file hash
+* version
+* creation date
+* modified date
+
+A result must be able to say:
+
+```text
+Document: Incident_Report.pdf
+Page: 14
+Section: Authentication
+```
+
+---
+
+# 12. IMAGE INGESTION
+
+For each image:
+
+```text
+Image
+ ↓
+metadata
+ ↓
+OCR
+ ↓
+vision description
+ ↓
+entity/object extraction
+ ↓
+multimodal embedding
+ ↓
+text embedding when useful
+ ↓
+search index
+ ↓
+graph
+```
+
+Store:
+
+```text
+image_id
+source_id
+path
+hash
+OCR
+caption
+detected_entities
+embedding_reference
+metadata
+```
+
+---
+
+# 13. VIDEO INGESTION
+
+Never analyze every frame at query time.
+
+During ingestion:
+
+```text
+Video
+ ├── Audio
+ │      ↓
+ │   Whisper
+ │      ↓
+ │   transcript
+ │      ↓
+ │   timestamped chunks
+ │
+ ├── Scene Detection
+ │      ↓
+ │   scene boundaries
+ │
+ ├── Keyframe extraction
+ │      ↓
+ │   representative frames
+ │
+ └── Metadata
+```
+
+For important frames:
+
+```text
+frame
+ ↓
+vision analysis
+ ↓
+OCR
+ ↓
+multimodal embedding
+```
+
+Video index must support:
+
+```text
+video_id
+scene_id
+frame_id
+start_time
+end_time
+transcript
+entities
+visual_description
+embedding
+```
+
+Search results must support:
+
+```text
+▶ Play from 01:24:17
+```
+
+The frontend must seek directly to the timestamp.
+
+---
+
+# 14. AUDIO SEARCH
+
+Audio ingestion:
+
+```text
+Audio
+ ↓
+Whisper
+ ↓
+timestamped transcript
+ ↓
+semantic chunks
+ ↓
+speaker segments when enabled
+ ↓
+embeddings
+ ↓
+search index
+```
+
+Allow:
+
+```text
+"Find where the engineer said the authentication service was unavailable."
+```
+
+Return:
+
+```text
+Audio
+00:41:13 - 00:41:47
+```
+
+---
+
+# 15. DATABASE SOURCE
+
+The database is NOT just another vector store.
+
+Support real structured querying.
+
+Database agent capabilities:
+
+```text
+get_schema()
+get_tables()
+get_columns()
+get_relationships()
+query_readonly()
+get_record()
+find_entity()
+```
+
+All generated SQL must be:
+
+* read-only
+* validated
+* parameterized
+* timeout-limited
+* audited
+
+Never permit:
+
+```sql
+DROP
+DELETE
+UPDATE
+INSERT
+ALTER
+TRUNCATE
+```
+
+unless a future explicitly approved action subsystem is added.
+
+For normal questions:
+
+```text
+"Find failed transactions for customer C82731"
+```
+
+the agent should use SQL.
+
+For semantic questions:
+
+```text
+"Find incidents related to payment authentication"
+```
+
+use semantic retrieval.
+
+For mixed questions:
+
+```text
+"Find customers mentioned in videos who had more than 5 failed payments"
+```
+
+combine video retrieval + entity resolution + SQL.
+
+---
+
+# 16. APPLICATION RECORD RESOLUTION
+
+Implement an:
+
+# Application Resolver
+
+Configuration:
+
+```yaml
+applications:
+  customer:
+    url_template: "http://localhost:3000/customers/{id}"
+
+  transaction:
+    url_template: "http://localhost:3000/transactions/{id}"
+
+  incident:
+    url_template: "http://localhost:3000/incidents/{id}"
+
+  asset:
+    url_template: "http://localhost:3000/assets/{id}"
+```
+
+When SPECTRA identifies:
+
+```text
+customer_id = C82731
+transaction_id = TX82931
+incident_id = INC1829
+```
+
+return:
+
+```text
+Open Customer
+Open Transaction
+Open Incident
+```
+
+Build a small realistic mock enterprise application for the demo.
+
+---
+
+# 17. ENTITY RESOLUTION
+
+This is one of the central NLP components.
+
+Entities can appear as:
+
+```text
+Mohammed Imran
+M. Imran
+Imran
+Customer 82731
+C82731
+```
+
+or:
+
+```text
+TX82931
+Txn 82931
+Transaction #82931
+Payment reference 82931
+```
+
+Implement:
+
+```text
+exact matching
++
+normalized matching
++
+fuzzy matching
++
+semantic matching
++
+database lookup
++
+LLM/VLM verification when uncertain
+```
+
+Create canonical entities:
+
+```text
+ENTITY_TYPE
+ENTITY_ID
+ALIASES
+CONFIDENCE
+SOURCES
+```
+
+---
+
+# 18. CROSS-MODAL ENTITY LINKING
+
+Example:
+
+```text
+PDF
+"Transaction 82931"
+
+Video
+"TX82931"
+
+Screenshot
+"OCR → TX82931"
+
+Database
+transaction_id = TX82931
+```
+
+All must resolve to:
+
+```text
+ENTITY: TX82931
+```
+
+Create an evidence relationship:
+
+```text
+PDF → REFERS_TO → TX82931
+Video → REFERS_TO → TX82931
+Image → REFERS_TO → TX82931
+DB record → IS → TX82931
+```
+
+---
+
+# 19. THE SPECTRA BRAIN
+
+The Brain is not just a chatbot.
+
+It is the central agent controller.
+
+Responsibilities:
+
+* understand user goal
+* classify question complexity
+* create investigation plan
+* determine relevant modalities
+* select tools
+* create hypotheses
+* execute tools
+* inspect observations
+* revise plan
+* determine evidence sufficiency
+* invoke disproof
+* invoke verifier
+* detect contradictions
+* decide when to stop
+* generate grounded answer
+
+The Brain MUST be able to continue iteratively.
+
+Example:
+
+```text
+Question
+ ↓
+Plan
+ ↓
+Tool
+ ↓
+Observation
+ ↓
+Replan
+ ↓
+Tool
+ ↓
+Observation
+ ↓
+Evidence sufficient?
+ ├── NO → continue
+ └── YES → verify → answer
+```
+
+This dynamic loop is mandatory.
+
+---
+
+# 20. AGENT TOOL SET
+
+Implement real callable tools:
+
+```text
+search_documents
+search_images
+search_videos
+search_audio
+query_database
+get_database_schema
+get_database_record
+resolve_entity
+search_entities
+search_graph
+expand_graph
+get_evidence
+get_source_metadata
+get_document_page
+get_video_timestamp
+get_image
+verify_claim
+search_supporting_evidence
+search_disconfirming_evidence
+detect_contradictions
+build_timeline
+open_application_record
+```
+
+Each tool has:
+
+* name
+* description
+* JSON schema
+* input validation
+* output schema
+* timeout
+* telemetry
+
+The Brain should use structured tool calling.
+
+---
+
+# 21. HYPOTHESIS ENGINE
+
+This is a signature SPECTRA feature.
+
+For investigation queries, allow the Brain to generate competing hypotheses.
+
+Example:
+
+```text
+Question:
+Why did transaction TX82931 fail?
+```
+
+Hypotheses:
+
+```text H1
+Authentication timeout
+
+H2
+Fraud-rule rejection
+
+H3
+Network failure
+
+H4
+Insufficient balance
+```
+
+Each hypothesis has:
+
+```text
+hypothesis_id
+description
+supporting_evidence
+contradicting_evidence
+confidence
+status
+```
+
+Possible states:
+
+```text
+OPEN
+SUPPORTED
+WEAK
+CONTRADICTED
+DISPROVED
+INSUFFICIENT
+```
+
+---
+
+# 22. DISPROOF AGENT
+
+This is mandatory.
+
+For the leading hypothesis, ask:
+
+> "What evidence would prove this hypothesis wrong?"
+
+The agent must actively search for counter-evidence.
+
+Example:
+
+```text
+H1:
+Authentication timeout
+
+Support Search
+ ↓
+3 sources
+
+Disproof Search
+ ↓
+No conflicting evidence
+
+Verifier
+ ↓
+Supported
+```
+
+If contradictory evidence is discovered:
+
+```text
+H1 confidence ↓
+new hypothesis generated
+```
+
+---
+
+# 23. INVESTIGATION CASE
+
+Every deep investigation gets a persistent case.
+
+Example:
+
+```text
+CASE-1829
+
+Question:
+Why did TX82931 fail?
+
+Entities:
+C82731
+TX82931
+INC1829
+
+Hypotheses:
+H1 92%
+H2 11%
+H3 18%
+
+Evidence:
+7 items
+
+Contradictions:
+1
+
+Timeline:
+10:42 transaction
+10:45 incident
+11:13 engineering meeting
+12:02 fix
+```
+
+Allow users to:
+
+* reopen case
+* continue investigation
+* add evidence
+* ask follow-up
+* inspect hypotheses
+* inspect graph
+* export report
+
+---
+
+# 24. EVIDENCE GRAPH
+
+Use Neo4j.
+
+Node types:
+
+```text
+Person
+Customer
+Transaction
+Incident
+Event
+Document
+Page
+Image
+Video
+Scene
+Frame
+Audio
+AudioSegment
+DatabaseRecord
+ApplicationRecord
+Hypothesis
+Claim
+Evidence
+```
+
+Relationships:
+
+```text
+MENTIONS
+REFERS_TO
+SAME_ENTITY
+SUPPORTS
+CONTRADICTS
+CAUSED_BY
+PRECEDES
+SUPERSEDES
+DERIVED_FROM
+BELONGS_TO
+EVIDENCE_FOR
+OPENED_AS
+```
+
+The graph must be generated incrementally during ingestion/investigation.
+
+---
+
+# 25. EVIDENCE LEDGER
+
+Every claim returned by the system must have provenance.
+
+Example:
+
+```json
+{
+  "claim": "Authentication timeout caused TX82931 failure",
+  "confidence": 0.94,
+  "evidence": [
+    {
+      "type": "database",
+      "record_id": "INC1829"
+    },
+    {
+      "type": "document",
+      "document_id": "DOC9182",
+      "page": 14
+    },
+    {
+      "type": "video",
+      "video_id": "VID129",
+      "start_seconds": 2537,
+      "end_seconds": 2581
+    }
+  ]
+}
+```
+
+No unsupported claim should be presented as fact.
+
+---
+
+# 26. CONTRADICTION RADAR
+
+If sources disagree:
+
+```text
+DATABASE
+APPROVED
+
+DOCUMENT
+REJECTED
+
+VIDEO
+"Request was rejected"
+```
+
+show:
+
+```text
+⚠ CONTRADICTION DETECTED
+```
+
+Then investigate:
+
+* timestamps
+* versions
+* source priority
+* updates
+* entity linkage
+* stale data
+
+The system must explain the contradiction rather than hide it.
+
+---
+
+# 27. TEMPORAL REASONING
+
+Support queries such as:
+
+```text
+How did this incident evolve?
+
+When did this architecture change?
+
+What happened before the failure?
+
+What evidence existed at the time?
+
+Which document is the latest approved version?
+```
+
+Build a normalized timeline from:
+
+* database timestamps
+* document timestamps
+* video timestamps
+* image metadata
+* event metadata
+
+Display:
+
+```text
+10:42:01
+Transaction created
+
+10:42:07
+Authentication failed
+
+10:45:12
+Incident created
+
+11:13:22
+Engineer discusses issue
+
+12:02:10
+Fix deployed
+```
+
+---
+
+# 28. SOURCE RELIABILITY
+
+Implement configurable source reliability.
+
+Factors:
+
+```text
+source authority
+freshness
+version
+specificity
+corroboration
+confidence
+```
+
+Do NOT hard-code arbitrary universal truth values.
+
+Store:
+
+```text
+source_reliability_score
+reliability_reason
+```
+
+The score must be inspectable and configurable.
+
+---
+
+# 29. FAST SEARCH MODE
+
+Fast mode must avoid unnecessary expensive models.
+
+Example:
+
+```text
+"Find transaction TX82931"
+```
+
+Pipeline:
+
+```text
+Query
+ ↓
+entity/ID detection
+ ↓
+database
+ ↓
+answer
+```
+
+Another:
+
+```text
+"Find documents mentioning Kubernetes failures"
+```
+
+Pipeline:
+
+```text
+Query
+ ↓
+BM25 + vector
+ ↓
+rerank
+ ↓
+answer
+```
+
+The target is low latency.
+
+---
+
+# 30. DEEP INVESTIGATION MODE
+
+Deep mode is the complete agent.
+
+Example:
+
+```text
+Investigate why TX82931 failed and provide all supporting evidence.
+```
+
+Expected flow:
+
+```text
+Fast Brain
+ ↓
+Deep Brain
+ ↓
+Extract entity
+ ↓
+Database
+ ↓
+Incident
+ ↓
+Documents
+ ↓
+Videos
+ ↓
+Images
+ ↓
+Entity resolution
+ ↓
+Timeline
+ ↓
+Hypotheses
+ ↓
+Support search
+ ↓
+Disproof search
+ ↓
+Contradiction check
+ ↓
+Verifier
+ ↓
+Evidence ledger
+ ↓
+Final answer
+```
+
+---
+
+# 31. ADAPTIVE SEARCH BUDGET
+
+Create configurable:
+
+```text
+latency_budget
+tool_call_budget
+evidence_budget
+gpu_budget
+```
+
+Example:
+
+```yaml
+fast:
+  max_tool_calls: 5
+  max_latency_seconds: 3
+
+deep:
+  max_tool_calls: 30
+  max_latency_seconds: 60
+```
+
+The Brain should stop when enough evidence is established.
+
+Do not waste VLM/LLM calls when cheap retrieval already provides a confident result.
+
+---
+
+# 32. SEARCH STRATEGY
+
+Implement staged retrieval.
+
+## Stage 1 — candidate generation
+
+Use:
+
+* metadata
+* BM25
+* sparse retrieval
+* ANN vectors
+* exact IDs
+
+## Stage 2 — filtering
+
+Use:
+
+* source
+* time
+* entity
+* type
+* permissions
+
+## Stage 3 — reranking
+
+Use multimodal/text reranker.
+
+## Stage 4 — expensive reasoning
+
+Only top candidates go to the LLM/VLM.
+
+## Stage 5 — verification
+
+Verify final claims.
+
+This architecture must be designed so TB-scale data does not cause raw-data scanning at query time.
+
+---
+
+# 33. TEXT ↔ IMAGE ↔ VIDEO SEARCH
+
+Implement all directions.
+
+## Text → Image
+
+```text
+"Find architecture diagrams showing three database nodes"
+```
+
+## Image → Image
+
+Upload image and find visually/semantically similar images.
+
+## Text → Video
+
+```text
+"Find where the engineer discussed sharding"
+```
+
+## Image → Video
+
+Upload an image and find video frames/scenes containing a related visual entity.
+
+## Image → Database
+
+Upload screenshot:
+
+```text
+OCR:
+TX82931
+```
+
+then:
+
+```text
+image
+ ↓
+OCR/entity
+ ↓
+database
+ ↓
+transaction
+```
+
+---
+
+# 34. DATABASE ↔ MULTIMODAL SEARCH
+
+Implement both directions.
+
+Example:
+
+```text
+Database record
+ ↓
+entity
+ ↓
+documents
+ ↓
+videos
+ ↓
+images
+```
+
+and:
+
+```text
+Image
+ ↓
+entity
+ ↓
+database
+ ↓
+documents
+ ↓
+videos
+```
+
+This cross-source traversal is one of the main SPECTRA capabilities.
+
+---
+
+# 35. DEMO DATASET
+
+Generate a realistic synthetic enterprise dataset.
+
+Do NOT use fake hard-coded search responses.
+
+Actually index the data.
+
+Create:
+
+```text
+demo-data/
+├── documents/
+├── images/
+├── videos/
+├── audio/
+├── database/
+└── expected/
+```
+
+Generate realistic:
+
+* customer records
+* transactions
+* incidents
+* architecture reports
+* meeting transcripts
+* screenshots
+* diagrams
+* video clips
+* audio clips
+
+Ensure entities deliberately recur across modalities.
+
+Example:
+
+```text
+Customer: C82731
+
+Transaction: TX82931
+
+Incident: INC1829
+
+Documents:
+DOC-001
+DOC-009
+
+Videos:
+VID-003
+
+Images:
+IMG-011
+```
+
+The demo data must form a coherent investigation story.
+
+---
+
+# 36. MANDATORY INDEPENDENT DEMOS
+
+The project must work even if the other modalities are disabled.
+
+## Demo A — Documents
+
+User query:
+
+```text
+Find documents about authentication failures.
+```
+
+Expected:
+
+* results
+* snippets
+* page
+* relevance
+* source
+* related entities
+
+---
+
+## Demo B — Images
+
+User uploads image.
+
+Expected:
+
+```text
+visual understanding
+OCR
+similar images
+related entities
+database records
+```
+
+---
+
+## Demo C — Video
+
+User:
+
+```text
+Find where the engineer discusses the authentication problem.
+```
+
+Expected:
+
+```text
+video
+timestamp
+transcript
+frame
+related evidence
+```
+
+---
+
+## Demo D — Audio
+
+User:
+
+```text
+Find where the speaker discusses the architecture change.
+```
+
+Expected:
+
+```text
+audio
+timestamp
+transcript
+speaker if available
+```
+
+---
+
+## Demo E — Database
+
+User:
+
+```text
+Find failed transactions for customer C82731.
+```
+
+Expected:
+
+```text
+real SQL execution
+records
+filters
+application links
+```
+
+---
+
+## Demo F — Image → everything
+
+Upload screenshot.
+
+Expected:
+
+```text
+Image
+ ↓
+OCR
+ ↓
+entity
+ ↓
+database
+ ↓
+document
+ ↓
+video
+ ↓
+evidence
+ ↓
+application link
+```
+
+---
+
+## Demo G — Unified Investigation
+
+User:
+
+```text
+Investigate why this transaction failed and find all corroborating evidence.
+```
+
+Expected:
+
+```text
+hypotheses
+multiple data sources
+entity resolution
+evidence graph
+disproof search
+contradiction check
+verification
+timeline
+final answer
+application links
+```
+
+---
+
+# 37. FRONTEND — USE IMPECCABLE
+
+The entire frontend must be designed and refined using **Impeccable**.
+
+Do not produce a generic AI dashboard.
+
+The visual language should feel like:
+
+```text
+enterprise intelligence
++
+investigation console
++
+modern AI workspace
+```
+
+Avoid:
+
+* generic SaaS cards everywhere
+* excessive gradients
+* childish AI visuals
+* huge rounded rectangles
+* template-looking dashboards
+* random decorative charts
+* excessive animations
+
+The UI should be:
+
+* professional
+* dense but readable
+* information-rich
+* visually hierarchical
+* responsive
+* keyboard accessible
+* dark/light capable
+* suitable for an enterprise intelligence product
+
+Use Impeccable to drive:
+
+* hierarchy
+* typography
+* spacing
+* layout
+* component styling
+* interaction patterns
+* empty states
+* loading states
+* responsive behavior
+
+If the execution environment provides an Impeccable skill/tool, actually use it.
+
+If unavailable, reproduce the same design quality manually and document the design decisions.
+
+---
+
+# 38. FRONTEND INFORMATION ARCHITECTURE
+
+Create:
+
+## Home
+
+```text
+SPECTRA
+AI Investigation Intelligence
+
+[Ask a question...]
+
+Upload:
+[Image] [Audio] [Video] [Document]
+
+Recent investigations
+Sources
+System health
+```
+
+## Search
+
+Tabs:
+
+```text
+Unified
+Documents
+Images
+Videos
+Audio
+Database
+```
+
+## Investigation
+
+Main layout:
+
+```text
+┌────────────────────────────────────────────┐
+│ Investigation                              │
+├────────────────────────────────────────────┤
+│ Question                                   │
+│                                            │
+│ Brain status                               │
+│                                            │
+│ Hypotheses                                 │
+│                                            │
+│ Evidence graph                             │
+│                                            │
+│ Timeline                                   │
+│                                            │
+│ Evidence ledger                            │
+│                                            │
+│ Final conclusion                           │
+└────────────────────────────────────────────┘
+```
+
+## Agent Trace
+
+Live view:
+
+```text
+🧠 Brain
+✓ Query classified
+
+🗄 Database Agent
+✓ Transaction found
+
+📄 Document Agent
+✓ 3 relevant documents
+
+🎥 Video Agent
+✓ 2 relevant timestamps
+
+🖼 Vision Agent
+✓ Architecture image
+
+🧬 Entity Resolver
+✓ 7 references → INC1829
+
+🛡 Verifier
+✓ Evidence consistent
+```
+
+## Evidence Explorer
+
+Allow opening:
+
+* document page
+* image
+* video timestamp
+* audio timestamp
+* database record
+
+## Evidence Graph
+
+Interactive graph.
+
+## Sources
+
+Source registry.
+
+## Models
+
+Model health and VRAM.
+
+## Agent Control Center
+
+Enable/disable agents.
+
+## Settings
+
+* model configuration
+* budgets
+* thresholds
+* applications
+* connectors
+* permissions
+
+---
+
+# 39. IMAGE UPLOAD UX
+
+Make image upload a first-class interaction.
+
+Example:
+
+```text
+┌─────────────────────────────────────┐
+│ Drop image here                     │
+│                                     │
+│         Browse files                │
+│                                     │
+│ Search this image across SPECTRA    │
+└─────────────────────────────────────┘
+```
+
+After upload:
+
+```text
+Image Understanding
+-------------------
+Detected:
+Transaction ID: TX82931
+Customer: C82731
+
+Searching:
+✓ Images
+✓ Videos
+✓ Documents
+✓ Database
+```
+
+---
+
+# 40. VIDEO RESULT UX
+
+Each result should display:
+
+```text
+Thumbnail
+Title
+Timestamp
+Transcript snippet
+Visual explanation
+Entities
+Confidence
+
+[▶ Play from timestamp]
+[View evidence]
+[Open related entity]
+```
+
+---
+
+# 41. DATABASE RESULT UX
+
+Show:
+
+```text
+Transaction TX82931
+
+Status:
+FAILED
+
+Customer:
+C82731
+
+Incident:
+INC1829
+
+Amount:
+...
+
+[Open Transaction]
+[Open Customer]
+[Open Incident]
+```
+
+Also allow:
+
+```text
+View generated SQL
+```
+
+for transparency.
+
+---
+
+# 42. QUERY EXPLANATION
+
+For each investigation, display:
+
+```text
+Why SPECTRA searched these sources
+```
+
+Example:
+
+```text
+The query referenced a transaction ID,
+so Database Search was selected first.
+
+An associated incident was found,
+so related documents and videos were searched.
+
+A visual reference was discovered,
+so image matching was performed.
+```
+
+Do not expose private chain-of-thought.
+
+Expose **concise action summaries, tool usage, evidence and decisions**, not hidden reasoning.
+
+---
+
+# 43. CONFIDENCE
+
+Use:
+
+```text
+High
+Medium
+Low
+Insufficient
+```
+
+and optionally numeric confidence internally.
+
+Display:
+
+```text
+Confidence: 94%
+
+Supported by:
+3 independent sources
+
+Contradictions:
+None detected
+```
+
+Do not claim certainty when evidence is weak.
+
+---
+
+# 44. ABSTENTION
+
+SPECTRA MUST be able to say:
+
+```text
+Insufficient evidence.
+
+I found related information but cannot establish
+the requested conclusion with sufficient support.
+```
+
+Do not hallucinate missing evidence.
+
+---
+
+# 45. SECURITY
+
+Implement:
+
+## Upload security
+
+* MIME validation
+* file extension validation
+* size limits
+* antivirus hook interface
+* path traversal protection
+* isolated processing directory
+
+## Database security
+
+* read-only database role
+* SQL allowlist
+* query timeout
+* result limit
+* query audit
+
+## Connector credentials
+
+Never store plaintext credentials in logs.
+
+## Application links
+
+Validate URL templates.
+
+---
+
+# 46. PERMISSION-AWARE SEARCH
+
+Create a policy abstraction:
+
+```text user
+role
+permissions
+source_access
+entity_access
+```
+
+Every search tool must accept a permission context.
+
+The first implementation can use a simple local RBAC model.
+
+Example:
+
+```text Admin
+Analyst
+Viewer
+```
+
+This architecture must support later integration with OAuth/OIDC/Keycloak.
+
+---
+
+# 47. OBSERVABILITY
+
+Implement:
+
+* structured logs
+* request IDs
+* investigation IDs
+* tool-call IDs
+* model latency
+* retrieval latency
+* reranker latency
+* total latency
+* token usage where available
+* GPU memory metrics
+* model load/unload events
+* errors
+
+Create:
+
+```text
+/api/health
+/api/metrics
+```
+
+---
+
+# 48. GPU DASHBOARD
+
+Frontend:
+
+```text
+RTX 4090
+
+VRAM
+18.9 / 24 GB
+
+Current model:
+Qwen3-30B-A3B Q4
+
+GPU utilization:
+...
+
+Model queue:
+...
+
+Active agent:
+...
+```
+
+This is particularly useful for your master's demonstration.
+
+---
+
+# 49. 4090 OOM STRATEGY
+
+If VRAM is insufficient:
+
+1. reduce context
+2. unload previous model
+3. reduce batch
+4. use smaller quantization
+5. move embeddings/reranker to CPU
+6. retry
+7. show a graceful status
+
+Do NOT crash the entire system.
+
+---
+
+# 50. PRODUCTION SCALE DESIGN
+
+The development environment is small.
+
+The architecture must not be.
+
+Future target:
+
+```text
+TBs / PBs
+millions / billions of records
+thousands of users
+multiple GPUs
+distributed indexing
+```
+
+Design interfaces around:
+
+* object IDs
+* source IDs
+* document IDs
+* entity IDs
+* chunk IDs
+* frame IDs
+* timestamp IDs
+
+Never couple search to local filesystem paths.
+
+Use:
+
+```text
+object_uri
+```
+
+and:
+
+```text
+source_id
+```
+
+as canonical references.
+
+---
+
+# 51. SCALING STRATEGY
+
+Development:
+
+```text
+1 server
+1 RTX 4090
+1 PostgreSQL
+1 Qdrant
+1 OpenSearch
+1 Neo4j
+1 MinIO
+```
+
+Production:
+
+```text
+load balancer
+      ↓
+agent services
+      ↓
+retrieval cluster
+      ↓
+Qdrant cluster
+      ↓
+OpenSearch cluster
+      ↓
+object storage
+      ↓
+database cluster
+      ↓
+GPU inference pool
+```
+
+Agent code must not assume single-node infrastructure.
+
+---
+
+# 52. CACHING
+
+Cache:
+
+* query embeddings
+* repeated retrieval
+* entity resolution
+* database schema
+* source metadata
+* model outputs where deterministic/appropriate
+
+Use Redis.
+
+Cache keys must include:
+
+* source version
+* model version
+* embedding version
+* query
+* permissions
+
+to avoid stale/insecure results.
+
+---
+
+# 53. INDEX VERSIONING
+
+Create:
+
+```text
+index_version
+embedding_model
+embedding_dimension
+parser_version
+vision_model
+created_at
+```
+
+When models change, support reindexing without destroying the live index.
+
+---
+
+# 54. SEARCH API
+
+Implement clean APIs.
+
+At minimum:
+
+```text
+POST /api/search
+POST /api/investigations
+GET  /api/investigations/{id}
+POST /api/investigations/{id}/continue
+
+POST /api/uploads
+GET  /api/assets/{id}
+
+POST /api/search/image
+POST /api/search/video
+POST /api/search/audio
+POST /api/search/document
+
+POST /api/database/query
+
+GET /api/evidence/{id}
+GET /api/entities/{id}
+GET /api/graph/{id}
+
+GET /api/sources
+POST /api/sources
+GET /api/sources/{id}/health
+
+GET /api/models
+GET /api/agents/status
+
+GET /api/stream/investigation/{id}
+```
+
+Use SSE/WebSocket for live agent traces.
+
+---
+
+# 55. STRUCTURED RESPONSE CONTRACT
+
+Agent responses should have explicit schema:
+
+```json
+{
+  "answer": "...",
+  "confidence": 0.94,
+  "status": "supported",
+  "entities": [],
+  "evidence": [],
+  "contradictions": [],
+  "timeline": [],
+  "application_links": [],
+  "investigation_id": "...",
+  "metrics": {}
+}
+```
+
+Never parse arbitrary natural-language agent output for critical application behavior.
+
+---
+
+# 56. AGENT STATE
+
+Persist structured state:
+
+```text
+InvestigationState
+```
+
+containing:
+
+```text
+goal
+intent
+mode
+hypotheses
+observations
+entities
+evidence
+contradictions
+timeline
+tool_history
+budget
+confidence
+status
+```
+
+Keep the state serializable.
+
+---
+
+# 57. PARALLEL TOOL EXECUTION
+
+When multiple searches are independent:
+
+```text
+Document search
+Image search
+Video search
+```
+
+allow concurrent execution when resources allow.
+
+But because the dev environment has a single GPU, GPU-heavy model calls must go through the model runtime scheduler.
+
+---
+
+# 58. NO RAW MEDIA QUERY SCANNING
+
+This rule is mandatory.
+
+Never implement:
+
+```text
+for video in all_videos:
+    run_vision_model(video)
+```
+
+at search time.
+
+Never implement:
+
+```text
+for image in all_images:
+    calculate_embedding()
+```
+
+during a query.
+
+All expensive processing belongs to ingestion/indexing.
+
+---
+
+# 59. RESEARCH / THESIS MODE
+
+Add an internal evaluation system.
+
+Create:
+
+```text
+evaluation/
+├── datasets/
+├── baselines/
+├── metrics/
+├── runners/
+└── reports/
+```
+
+Implement benchmark questions covering:
+
+```text
+single-source retrieval
+cross-document retrieval
+image retrieval
+video retrieval
+audio retrieval
+database reasoning
+image → DB
+DB → video
+video → document
+entity resolution
+multi-hop investigation
+temporal reasoning
+contradiction detection
+hypothesis testing
+evidence sufficiency
+abstention
+```
+
+---
+
+# 60. BASELINES
+
+Implement selectable baseline modes:
+
+```text
+Baseline A:
+Keyword/BM25
+
+Baseline B:
+Vector RAG
+
+Baseline C:
+Multimodal RAG
+
+Baseline D:
+Agentic retrieval
+
+SPECTRA:
+Hypothesis-driven investigation
+```
+
+The evaluation system should compare:
+
+```text
+retrieval recall
+precision
+MRR
+nDCG
+entity resolution accuracy
+evidence completeness
+claim support
+contradiction detection
+investigation success
+latency
+tool count
+GPU compute
+```
+
+---
+
+# 61. SEARCH AUTOPSY
+
+Create a feature:
+
+# Search Autopsy
+
+After an investigation show:
+
+```text
+QUERY AUTOPSY
+
+Sources considered:
+Database
+Documents
+Videos
+Images
+
+Candidates retrieved:
+...
+
+Evidence used:
+7
+
+Evidence rejected:
+29
+
+Tool calls:
+18
+
+Contradictions:
+1
+
+Total latency:
+8.4 sec
+
+GPU usage:
+...
+
+Models used:
+...
+```
+
+This is a major demonstration feature.
+
+---
+
+# 62. DEMO / SHOWCASE MODE
+
+Create a guided demo mode.
+
+Button:
+
+```text
+Launch Guided Demo
+```
+
+Scenarios:
+
+### Scenario 1
+
+Image → Database
+
+### Scenario 2
+
+Text → Video
+
+### Scenario 3
+
+Database → Documents
+
+### Scenario 4
+
+Investigation
+
+### Scenario 5
+
+Contradiction
+
+### Scenario 6
+
+Timeline
+
+Each demo automatically loads the appropriate synthetic data and explains the result.
+
+---
+
+# 63. AGENT CONTROL CENTER
+
+Show:
+
+```text
+Brain
+● Ready
+
+Document Agent
+● Ready
+
+Vision Agent
+● Ready
+
+Video Agent
+● Ready
+
+Audio Agent
+● Ready
+
+Database Agent
+● Ready
+
+Entity Resolver
+● Ready
+
+Evidence Graph
+● Ready
+
+Verifier
+● Ready
+
+Disproof Agent
+● Ready
+```
+
+Allow disabling any component.
+
+---
+
+# 64. FAILURE RESILIENCE
+
+Examples:
+
+Vision disabled:
+
+```text
+Image search unavailable.
+Using OCR/text/database alternatives.
+```
+
+Database disabled:
+
+```text
+Database agent unavailable.
+Continuing using unstructured evidence.
+```
+
+Video unavailable:
+
+```text
+Video source unavailable.
+Investigation continues with documents/images.
+```
+
+No fake answers.
+
+---
+
+# 65. DOCUMENTATION
+
+Create:
+
+```text
+README.md
+docs/architecture.md
+docs/agent-design.md
+docs/search-architecture.md
+docs/model-strategy.md
+docs/4090-deployment.md
+docs/data-model.md
+docs/api.md
+docs/evaluation.md
+docs/scaling.md
+docs/demo-guide.md
+progress.md
+```
+
+README must explain:
+
+* what SPECTRA is
+* why it is different
+* architecture
+* setup
+* model downloads
+* GPU requirements
+* demo commands
+* screenshots
+* example queries
+
+---
+
+# 66. DOCKER
+
+Create:
+
+```text
+docker-compose.yml
+docker-compose.dev.yml
+```
+
+Services:
+
+```text
+frontend
+api
+worker
+model-gateway
+postgres
+qdrant
+opensearch
+neo4j
+redis
+minio
+```
+
+GPU access must be correctly configured.
+
+Do not force GPU access on services that don't need it.
+
+---
+
+# 67. ENVIRONMENT
+
+Create:
+
+```text
+.env.example
+```
+
+including:
+
+```env
+APP_ENV=development
+MODEL_PROFILE=rtx4090
+
+ENABLE_DOCUMENT_AGENT=true
+ENABLE_IMAGE_AGENT=true
+ENABLE_VIDEO_AGENT=true
+ENABLE_AUDIO_AGENT=true
+ENABLE_DATABASE_AGENT=true
+ENABLE_GRAPH_AGENT=true
+ENABLE_ENTITY_RESOLUTION=true
+ENABLE_HYPOTHESIS_ENGINE=true
+ENABLE_DISPROOF_AGENT=true
+ENABLE_VERIFIER=true
+
+POSTGRES_URL=...
+QDRANT_URL=...
+OPENSEARCH_URL=...
+NEO4J_URL=...
+REDIS_URL=...
+MINIO_ENDPOINT=...
+
+MODEL_DIR=./models
+DATA_DIR=./data
+
+FAST_BRAIN_MODEL=...
+DEEP_BRAIN_MODEL=...
+VISION_MODEL=...
+EMBEDDING_MODEL=...
+RERANKER_MODEL=...
+WHISPER_MODEL=...
+```
+
+---
+
+# 68. COMMANDS
+
+Create:
+
+```text
+make install
+make up
+make down
+make logs
+make seed-demo
+make ingest
+make reindex
+make test
+make lint
+make format
+make benchmark
+make demo
+make gpu-check
+make model-health
+```
+
+Also provide direct commands for users who don't use Make.
+
+---
+
+# 69. PROGRESS.MD — MANDATORY
+
+Create:
+
+```text
+progress.md
+```
+
+at the repository root.
+
+It must contain granular status.
+
+Example:
+
+```markdown
+# SPECTRA Implementation Progress
+
+## Phase 0 — Repository
+- [x] Repository inspected
+- [x] Architecture documented
+- [ ] Initial cleanup
+
+## Phase 1 — Infrastructure
+- [ ] Docker
+- [ ] PostgreSQL
+- [ ] Qdrant
+- [ ] OpenSearch
+- [ ] Neo4j
+- [ ] Redis
+- [ ] MinIO
+
+## Phase 2 — Models
+- [ ] Fast Brain
+- [ ] Deep Brain
+- [ ] Vision
+- [ ] Embedding
+- [ ] Reranker
+- [ ] Whisper
+- [ ] OCR
+
+## Phase 3 — Ingestion
+- [ ] Documents
+- [ ] Images
+- [ ] Audio
+- [ ] Video
+- [ ] Database
+- [ ] External sources
+
+...
+```
+
+After completing each meaningful task:
+
+1. update the checkbox
+2. add date/time
+3. record implementation details
+4. record tests run
+5. record failures fixed
+6. record known limitations
+
+Never leave progress.md out of date.
+
+At the bottom maintain:
+
+```markdown
+## Current State
+
+What currently works.
+
+## Known Issues
+
+What remains.
+
+## Next Tasks
+
+What the implementation agent should do next.
+```
+
+---
+
+# 70. CHANGELOG
+
+Create:
+
+```text
+CHANGELOG.md
+```
+
+Track meaningful architectural changes.
+
+---
+
+# 71. GIT DISCIPLINE
+
+Use logical commits.
+
+Examples:
+
+```text
+feat(infrastructure): add local search stack
+feat(ingestion): add document pipeline
+feat(video): add scene and transcript indexing
+feat(agent): add tool-driven investigation loop
+feat(evidence): add investigation graph
+feat(ui): add investigation console
+feat(models): add 4090 model router
+test(eval): add multimodal investigation benchmark
+```
+
+Do not create meaningless commits.
+
+Do not destroy working functionality to implement a feature.
+
+---
+
+# 72. TESTING
+
+Create:
+
+## Unit tests
+
+* parsers
+* chunking
+* entity normalization
+* SQL validator
+* URL resolver
+* evidence model
+* hypothesis model
+* tool schemas
+
+## Integration tests
+
+* upload → indexing
+* document search
+* image search
+* video search
+* database query
+* graph linking
+* investigation workflow
+
+## End-to-end tests
+
+At least:
+
+```text
+document question
+image upload
+video query
+database query
+image → DB
+unified investigation
+contradiction case
+insufficient evidence case
+agent-disabled case
+```
+
+---
+
+# 73. REAL END-TO-END ACCEPTANCE TEST
+
+The system must successfully execute:
+
+## Test
+
+Upload a screenshot containing:
+
+```text
+TX82931
+```
+
+Then ask:
+
+> "Investigate why this transaction failed and show me the supporting evidence."
+
+Expected:
+
+```text
+Image
+ ↓
+OCR
+ ↓
+TX82931
+ ↓
+Database
+ ↓
+Customer
+ ↓
+Incident
+ ↓
+Documents
+ ↓
+Video
+ ↓
+Image/visual evidence
+ ↓
+Entity Resolution
+ ↓
+Hypotheses
+ ↓
+Support Search
+ ↓
+Disproof Search
+ ↓
+Verification
+ ↓
+Timeline
+ ↓
+Final Answer
+ ↓
+Application Links
+```
+
+The frontend must visibly demonstrate the journey.
+
+---
+
+# 74. SECOND END-TO-END TEST
+
+User:
+
+> "Find where the architecture change was discussed."
+
+Expected:
+
+```text
+query
+ ↓
+video search
+ ↓
+transcript retrieval
+ ↓
+timestamp
+ ↓
+frame
+ ↓
+related architecture document
+ ↓
+entity/event
+ ↓
+answer
+```
+
+---
+
+# 75. THIRD END-TO-END TEST
+
+User:
+
+> "Which customers mentioned in the engineering meeting had more than five failed payments?"
+
+Expected:
+
+```text
+Video search
+ ↓
+Entity extraction
+ ↓
+Customer IDs
+ ↓
+SQL
+ ↓
+Aggregation
+ ↓
+Results
+ ↓
+Application links
+```
+
+---
+
+# 76. FOURTH END-TO-END TEST
+
+User:
+
+> "The sources disagree about whether the incident was approved. Investigate."
+
+Expected:
+
+```text
+Retrieve sources
+ ↓
+detect contradiction
+ ↓
+version/timestamp analysis
+ ↓
+source reliability
+ ↓
+timeline
+ ↓
+explanation
+```
+
+---
+
+# 77. FIFTH END-TO-END TEST
+
+Disable:
+
+```text
+Vision Agent
+```
+
+Then perform an investigation.
+
+Expected:
+
+```text
+Vision unavailable
+ ↓
+Brain adjusts strategy
+ ↓
+uses documents/video/database
+ ↓
+answer still produced when evidence is sufficient
+```
+
+---
+
+# 78. PERFORMANCE TESTS
+
+Create benchmarks for:
+
+```text
+100 documents
+1,000 documents
+
+1,000 images
+10,000 images
+
+10 videos
+100 videos
+
+10k database records
+100k database records
+```
+
+Measure:
+
+* ingestion rate
+* query latency
+* vector search latency
+* BM25 latency
+* reranking latency
+* model latency
+* graph latency
+* end-to-end latency
+
+---
+
+# 79. SEARCH RESULT QUALITY
+
+Do not rank purely on vector similarity.
+
+Create a unified scoring abstraction incorporating:
+
+```text
+lexical relevance
+semantic similarity
+entity match
+metadata match
+source reliability
+freshness
+evidence diversity
+```
+
+Keep it configurable.
+
+---
+
+# 80. EVIDENCE DIVERSITY
+
+The Brain should prefer independent corroboration.
+
+For example:
+
+```text
+3 paragraphs from one PDF
+```
+
+should not automatically outweigh:
+
+```text
+1 DB record
++
+1 PDF
++
+1 video
+```
+
+when answering an enterprise investigation question.
+
+Represent evidence diversity explicitly.
+
+---
+
+# 81. APPLICATION NAVIGATION
+
+Every canonical entity type must support:
+
+```text
+resolve → application URL
+```
+
+Example:
+
+```text
+C82731
+ ↓
+Customer
+ ↓
+http://localhost:3000/customers/C82731
+```
+
+Use safe URL templates.
+
+---
+
+# 82. MOCK ENTERPRISE APPLICATION
+
+Build:
+
+```text
+apps/mock-enterprise/
+```
+
+with:
+
+```text
+customers
+transactions
+incidents
+assets
+```
+
+Pages:
+
+```text
+/customers/[id]
+/transactions/[id]
+/incidents/[id]
+/assets/[id]
+```
+
+The mock application must use the same PostgreSQL database as the demo data.
+
+This demonstrates:
+
+```text
+AI evidence
+ ↓
+canonical ID
+ ↓
+database
+ ↓
+enterprise application
+```
+
+---
+
+# 83. NO FAKE LINKING
+
+Application links must come from actual resolved IDs.
+
+Do not hard-code:
+
+```text
+TX82931
+```
+
+into the UI merely for the demo.
+
+The link should be generated from the actual database/entity resolution result.
+
+---
+
+# 84. AGENT TRACE
+
+Create a structured trace object:
+
+```text
+InvestigationTrace
+
+step_id
+agent
+tool
+started_at
+completed_at
+status
+input_summary
+output_summary
+latency
+evidence_ids
+```
+
+Frontend subscribes to this.
+
+---
+
+# 85. NO CHAIN-OF-THOUGHT EXPOSURE
+
+The system can show:
+
+```text
+Planning
+Searching Database
+Searching Documents
+Searching Video
+Checking Evidence
+Verifying
+```
+
+But not internal hidden model chain-of-thought.
+
+---
+
+# 86. MODEL FALLBACKS
+
+If the deep model cannot be loaded:
+
+```text
+fallback to Fast Brain
+```
+
+If Vision cannot load:
+
+```text
+OCR + metadata + text fallback
+```
+
+If multimodal embedding unavailable:
+
+```text
+text embedding
+```
+
+if an image has OCR text.
+
+The system must clearly report degraded mode.
+
+---
+
+# 87. CONFIGURABLE MODEL RUNTIMES
+
+Implement:
+
+```text
+MODEL_RUNTIME=llama_cpp
+MODEL_RUNTIME=vllm
+MODEL_RUNTIME=ollama
+```
+
+with the abstraction:
+
+```text
+LLMProvider
+VisionProvider
+EmbeddingProvider
+RerankerProvider
+SpeechProvider
+```
+
+The application must not be tightly coupled to a specific serving engine.
+
+---
+
+# 88. DEVELOPMENT MODE
+
+Default:
+
+```text
+small dataset
+local files
+synthetic DB
+single GPU
+```
+
+Everything should be reproducible from:
+
+```text
+make demo
+```
+
+---
+
+# 89. PRODUCTION MODE
+
+Support:
+
+```env
+DEPLOYMENT_MODE=production
+```
+
+and allow:
+
+* external object storage
+* external PostgreSQL
+* distributed vector DB
+* distributed OpenSearch
+* multiple model servers
+* multiple workers
+
+without changing the agent contract.
+
+---
+
+# 90. MASTER PROJECT STRUCTURE
+
+Use something close to:
+
+```text
+spectra/
+│
+├── apps/
+│   ├── frontend/
+│   └── mock-enterprise/
+│
+├── services/
+│   ├── api/
+│   ├── agent/
+│   ├── ingestion/
+│   ├── search/
+│   ├── model-gateway/
+│   ├── evidence/
+│   ├── entity-resolution/
+│   └── connectors/
+│
+├── packages/
+│   ├── schemas/
+│   ├── tool-contracts/
+│   └── config/
+│
+├── models/
+│
+├── data/
+│   ├── demo/
+│   ├── uploads/
+│   └── processed/
+│
+├── evaluation/
+│
+├── docs/
+│
+├── scripts/
+│
+├── docker/
+│
+├── docker-compose.yml
+├── docker-compose.dev.yml
+├── Makefile
+├── README.md
+├── progress.md
+├── CHANGELOG.md
+└── .env.example
+```
+
+Adapt the exact structure to the repository after inspection.
+
+Do not blindly recreate it if an existing structure is already good.
+
+---
+
+# 91. IMPLEMENTATION ORDER
+
+Follow this order but keep the application runnable after every phase.
+
+## Phase 0
+
+Inspect repository.
+
+## Phase 1
+
+Infrastructure.
+
+## Phase 2
+
+Source registry and uploads.
+
+## Phase 3
+
+Document indexing/search.
+
+## Phase 4
+
+Database agent.
+
+## Phase 5
+
+Image indexing/search.
+
+## Phase 6
+
+Audio indexing/search.
+
+## Phase 7
+
+Video indexing/search.
+
+## Phase 8
+
+Entity resolution.
+
+## Phase 9
+
+Evidence graph.
+
+## Phase 10
+
+Brain/tool orchestration.
+
+## Phase 11
+
+Hypothesis engine.
+
+## Phase 12
+
+Disproof agent.
+
+## Phase 13
+
+Verifier.
+
+## Phase 14
+
+Temporal reasoning.
+
+## Phase 15
+
+Contradiction detection.
+
+## Phase 16
+
+Application resolver/mock application.
+
+## Phase 17
+
+Unified investigation.
+
+## Phase 18
+
+Fast/Deep modes.
+
+## Phase 19
+
+Frontend polish through Impeccable.
+
+## Phase 20
+
+Evaluation.
+
+## Phase 21
+
+4090 optimization.
+
+## Phase 22
+
+End-to-end demo.
+
+## Phase 23
+
+Documentation.
+
+---
+
+# 92. DEFINITION OF DONE
+
+Do NOT consider the project complete until all are true.
+
+### Infrastructure
+
+* [ ] `docker compose up` works
+* [ ] database works
+* [ ] Qdrant works
+* [ ] OpenSearch works
+* [ ] Neo4j works
+* [ ] Redis works
+* [ ] MinIO works
+
+### Models
+
+* [ ] Fast Brain works
+* [ ] Deep Brain works
+* [ ] Vision works
+* [ ] Embedding works
+* [ ] Reranker works
+* [ ] Whisper works
+* [ ] OCR works
+
+### Ingestion
+
+* [ ] document upload/index/search
+* [ ] image upload/index/search
+* [ ] audio upload/index/search
+* [ ] video upload/index/search
+* [ ] CSV/file ingestion
+* [ ] PostgreSQL connector
+* [ ] MySQL connector
+* [ ] SQLite connector
+* [ ] local folder connector
+* [ ] S3/MinIO connector
+
+### Agent
+
+* [ ] Brain
+* [ ] tools
+* [ ] iterative loop
+* [ ] hypotheses
+* [ ] support search
+* [ ] disproof search
+* [ ] verifier
+* [ ] entity resolution
+* [ ] graph
+* [ ] temporal reasoning
+* [ ] contradiction detection
+* [ ] evidence ledger
+* [ ] application resolver
+
+### UI
+
+* [ ] Impeccable-quality design
+* [ ] unified search
+* [ ] upload
+* [ ] investigation workspace
+* [ ] evidence graph
+* [ ] timeline
+* [ ] agent trace
+* [ ] source management
+* [ ] agent control center
+* [ ] model dashboard
+* [ ] application deep links
+
+### 4090
+
+* [ ] model runtime manager
+* [ ] model switching
+* [ ] VRAM monitoring
+* [ ] OOM recovery
+* [ ] Fast mode
+* [ ] Deep mode
+* [ ] degraded mode
+
+### Research
+
+* [ ] benchmark dataset
+* [ ] baseline comparisons
+* [ ] metrics
+* [ ] benchmark runner
+* [ ] latency measurement
+* [ ] tool efficiency measurement
+
+### Reliability
+
+* [ ] tests passing
+* [ ] lint passing
+* [ ] no critical TODOs
+* [ ] no fake core responses
+* [ ] no hard-coded demo-only IDs
+* [ ] documentation complete
+* [ ] progress.md updated
+
+---
+
+# 93. FINAL DEMO REQUIREMENT
+
+The final demonstration must be possible on:
+
+```text
+ONE RTX 4090
+24 GB VRAM
+```
+
+Try to run:
+
+```text
+Fast Brain
+Deep Brain
+Vision
+Embedding
+Reranker
+Whisper
+OCR
+```
+
+through the model manager using sequential GPU scheduling and CPU fallback where appropriate.
+
+Do not require multiple GPUs.
+
+The system should visibly indicate when models are being loaded/swapped.
+
+---
+
+# 94. FINAL SHOWCASE SCENARIO
+
+The final showcase should be:
+
+### Step 1
+
+Upload an image containing:
+
+```text
+TX82931
+```
+
+### Step 2
+
+SPECTRA extracts the entity.
+
+### Step 3
+
+Database agent finds:
+
+```text
+Customer C82731
+Incident INC1829
+Status FAILED
+```
+
+### Step 4
+
+The Brain creates:
+
+```text
+H1 Authentication timeout
+H2 Fraud rejection
+H3 Network failure
+```
+
+### Step 5
+
+SPECTRA searches:
+
+```text
+Database
+Documents
+Videos
+Images
+```
+
+### Step 6
+
+Entity resolver connects the evidence.
+
+### Step 7
+
+Evidence graph is built.
+
+### Step 8
+
+Disproof agent searches for contradictory evidence.
+
+### Step 9
+
+Verifier evaluates claims.
+
+### Step 10
+
+Timeline is reconstructed.
+
+### Step 11
+
+Final answer:
+
+```text
+Most supported explanation:
+Authentication service timeout.
+
+Confidence:
+94%
+
+Supporting evidence:
+Database record
+Incident report — Page 14
+Engineering meeting — 42:17
+Architecture diagram
+```
+
+### Step 12
+
+User can click:
+
+```text
+Open Transaction
+Open Customer
+Open Incident
+```
+
+---
+
+# 95. FINAL USER EXPERIENCE
+
+The user should feel:
+
+> "I gave SPECTRA a question, and it investigated the organization for me."
+
+Not:
+
+> "I asked another chatbot."
+
+The product should visibly communicate:
+
+```text
+SEARCH
+        ↓
+UNDERSTAND
+        ↓
+INVESTIGATE
+        ↓
+CORRELATE
+        ↓
+CHALLENGE
+        ↓
+VERIFY
+        ↓
+EXPLAIN
+        ↓
+NAVIGATE
+```
+
+---
+
+# 96. MOST IMPORTANT ENGINEERING PRINCIPLE
+
+Build the system so that these are independent:
+
+```text
+INGESTION
+SEARCH
+AGENT
+MODELS
+GRAPH
+APPLICATION
+UI
+```
+
+A change to one must not require rewriting the others.
+
+---
+
+# 97. MOST IMPORTANT RESEARCH PRINCIPLE
+
+Do not present:
+
+> "We built a multimodal chatbot."
+
+The implementation must make it possible to study:
+
+1. cross-modal entity resolution
+2. evidence-centric investigation
+3. hypothesis-driven retrieval
+4. disconfirming evidence search
+5. contradiction-aware reasoning
+6. temporal evidence reasoning
+7. adaptive retrieval budgets
+8. evidence sufficiency / abstention
+9. latency vs accuracy
+10. multimodal vs single-modal baselines
+
+These are the dimensions that make this a master's research platform.
+
+---
+
+# 98. FIRST ACTION
+
+Immediately:
+
+1. Inspect the repository.
+2. Detect OS, CUDA, NVIDIA driver, RTX 4090, RAM and disk.
+3. Detect existing project structure.
+4. Create/update `progress.md`.
+5. Create `docs/architecture.md`.
+6. Implement the infrastructure.
+7. Start the first working vertical slice.
+8. Run it.
+9. Test it.
+10. Continue through the phases.
+
+Do not stop at step 5.
+
+Continue until the full system is implemented.
+
+---
+
+# 99. FINAL COMMAND
+
+At the end, provide:
+
+```text
+IMPLEMENTATION COMPLETE
+
+Run:
+make up
+
+Then:
+make seed-demo
+
+Then:
+make demo
+```
+
+Also report:
+
+```text
+Models installed
+Disk usage
+VRAM usage
+RAM usage
+Enabled agents
+Disabled agents
+Available demos
+Tests passed
+Known limitations
+Next scaling considerations
+```
+
+Most importantly:
+
+**Do the implementation, not just the explanation.**

@@ -1,0 +1,32 @@
+{
+  "edges": [
+    {
+      "edge_id": "e1",
+      "end": "ent_transaction_ab12",
+      "properties": {},
+      "start": "evd_1",
+      "type": "REFERS_TO"
+    }
+  ],
+  "nodes": [
+    {
+      "labels": [
+        "Transaction"
+      ],
+      "node_id": "ent_transaction_ab12",
+      "properties": {
+        "canonical_name": "TX82931"
+      }
+    },
+    {
+      "labels": [
+        "Evidence"
+      ],
+      "node_id": "evd_1",
+      "properties": {
+        "summary": "auth timeout"
+      }
+    }
+  ],
+  "truncated": false
+}

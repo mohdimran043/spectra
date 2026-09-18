@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# SPECTRA - optional NVIDIA GPU overlay (OPERATOR / LAN stack).
+#
+# deploy.sh adds this file automatically when GPU_ENABLED=1 in .env.  Manually:
+#   docker compose -f docker-compose.yml -f docker-compose.lan.gpu.yml up -d
+#
+# Requires the NVIDIA Container Toolkit on the host.  Without it, `up` fails
+# with: could not select device driver "nvidia" with capabilities: [[gpu]].
+# In that case set GPU_ENABLED=0 and SPECTRA runs CPU-only (MODEL_PROFILE=cpu).
+#
+# Only api and worker request GPUs.  Datastores never do.
+# ---------------------------------------------------------------------------
+
+services:
+
+  api:
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
+      NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-1}
+              capabilities: [gpu]
+
+  worker:
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "${NVIDIA_VISIBLE_DEVICES:-all}"
+      NVIDIA_DRIVER_CAPABILITIES: "${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-1}
+              capabilities: [gpu]
