@@ -54,6 +54,41 @@ EXACT_ID_BONUS = 1.0
 # a six-month-old document is worth half a fresh one, all else being equal.
 FRESHNESS_HALF_LIFE_DAYS = 180.0
 
+# ---------------------------------------------------------------------------
+# Admissibility.  Every signal below is min-max normalised across the result
+# set, which means the best candidate always scores 1.0 on its strongest signal
+# however poor it is in absolute terms - so the scorer could never express
+# "nothing matched" and a query for a name absent from the corpus came back with
+# five confident-looking hits.  The gate therefore reads the RAW signals, before
+# normalisation, and drops anything carrying no actual evidence.
+#
+# Measured on this corpus:
+#   'imran' (absent)            lexical 0.0000   rerank 0.0067-0.2230
+#   'authentication timeout'    lexical 1.7-4.9  rerank 0.7996-0.9753
+#   'TX83155' (exact)           lexical 1.2-2.6  rerank 0.9408-0.9754
+# ---------------------------------------------------------------------------
+
+#: A cross-encoder score high enough to admit a candidate that shares no words
+#: with the query - a true paraphrase.  Sits above the 0.223 ceiling measured
+#: for a query with nothing to match.
+MIN_RERANK_EVIDENCE = 0.35
+
+
+def has_evidence(raw: Mapping[str, float | None], is_exact: bool) -> bool:
+    """True when a candidate has some real reason to be in the result set.
+
+    Cosine similarity is deliberately not sufficient on its own: an exact
+    enterprise-id match measured 0.35-0.47 semantic while an absent query
+    measured 0.30-0.42, so the signal cannot separate a match from noise.
+    """
+    if is_exact or (raw.get("entity_match") or 0.0) > 0.0:
+        return True
+    if (raw.get("lexical") or 0.0) > 0.0:
+        return True
+    rerank = raw.get("rerank")
+    return rerank is not None and rerank >= MIN_RERANK_EVIDENCE
+
+
 # Used for signals that are genuinely unknown (no date, no source record).  A
 # neutral 0.5 neither rewards nor punishes missing metadata.
 NEUTRAL_SIGNAL = 0.5
@@ -168,13 +203,24 @@ class UnifiedScorer:
         if not inputs:
             return ()
         moment = now or datetime.now(timezone.utc)
-        raw = [self._raw_signals(item, filters, moment) for item in inputs]
-        normalised = _normalise_columns(raw)
+        scored_inputs = list(inputs)
+        raw = [self._raw_signals(item, filters, moment) for item in scored_inputs]
+        # Drop the evidence-free candidates BEFORE normalising, so the survivors
+        # are rescaled against each other rather than against noise.
+        admitted = [
+            (item, values)
+            for item, values in zip(scored_inputs, raw, strict=False)
+            if has_evidence(values, item.fused.is_exact)
+        ]
+        if not admitted:
+            return ()
+        scored_inputs = [item for item, _ in admitted]
+        normalised = _normalise_columns([values for _, values in admitted])
         weights = self._weights if reranked else self._weights.without_rerank()
         mapping = weights.as_mapping()
         scored = [
             self._build(item, values, mapping)
-            for item, values in zip(inputs, normalised, strict=False)
+            for item, values in zip(scored_inputs, normalised, strict=False)
         ]
         return tuple(sorted(scored, key=lambda row: (-row.breakdown.final, row.chunk_id)))
 

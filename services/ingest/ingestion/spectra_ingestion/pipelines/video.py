@@ -20,7 +20,13 @@ from spectra_ai_core.gateway import ModelGateway
 from spectra_config.logging import get_logger
 from spectra_schemas import Asset, Chunk, Modality, VideoLocator
 
-from ..chunking import DEFAULT_TARGET_TOKENS, TranscriptWindow, merge_transcript_segments, window_text
+from ..chunking import (
+    DEFAULT_TARGET_TOKENS,
+    TranscriptWindow,
+    drop_hallucinated,
+    merge_transcript_segments,
+    window_text,
+)
 from ..entity_hook import EntityExtractor
 from ..indexer import Indexer
 from ..media import (
@@ -141,7 +147,9 @@ class VideoPipeline(BasePipeline):
                 warnings.append(f"transcription_failed: {exc}")
                 log.warning("video.transcription_failed", path=str(path), error=str(exc))
                 return []
-        return merge_transcript_segments(transcription.segments, target_tokens=self._target_tokens)
+        merged = merge_transcript_segments(transcription.segments, target_tokens=self._target_tokens)
+        # See audio.py: ASR invents text on silence, and an index is forever.
+        return drop_hallucinated(merged)
 
     async def _scenes(
         self, path: Path, duration: float, warnings: list[str]

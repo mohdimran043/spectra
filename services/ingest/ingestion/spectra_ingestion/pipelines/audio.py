@@ -10,7 +10,12 @@ from spectra_ai_core.interfaces import TranscriptionResult
 from spectra_config.logging import get_logger
 from spectra_schemas import Asset, AudioLocator, Chunk, Modality
 
-from ..chunking import DEFAULT_TARGET_TOKENS, TranscriptWindow, merge_transcript_segments
+from ..chunking import (
+    DEFAULT_TARGET_TOKENS,
+    TranscriptWindow,
+    drop_hallucinated,
+    merge_transcript_segments,
+)
 from ..entity_hook import EntityExtractor
 from ..indexer import Indexer
 from ..media import MediaToolError, duration_seconds, probe
@@ -43,11 +48,16 @@ class AudioPipeline(BasePipeline):
 
         await self.report(job_ctx, STAGE_EXTRACT, 0.25, "transcribing audio")
         transcription = await self.transcribe(path, warnings)
-        windows = (
+        merged = (
             merge_transcript_segments(transcription.segments, target_tokens=self._target_tokens)
             if transcription is not None
             else []
         )
+        # Recognition noise on silence and music is not content; dropping it here
+        # keeps it out of the index rather than out of each query's results.
+        windows = drop_hallucinated(merged)
+        if len(windows) < len(merged):
+            warnings.append(f"dropped_hallucinated_transcript_windows: {len(merged) - len(windows)}")
         duration = duration or (transcription.duration if transcription else None)
 
         indexed_asset = asset.model_copy(

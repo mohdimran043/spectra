@@ -108,6 +108,80 @@ def chunk_blocks(
     return [replace(draft, ordinal=index) for index, draft in enumerate(drafts)]
 
 
+# ---------------------------------------------------------------------------
+# Transcript quality.  Speech recognition invents text on silence and music:
+# "Thank you for watching!", "Oh", "© transcript <name>".  Indexed, these become
+# searchable content - 9 of 122 chunks on the demo corpus - and they surface for
+# any query with nothing better to match.  They are dropped at ingestion, where
+# the cost is paid once, rather than filtered at query time.
+# ---------------------------------------------------------------------------
+
+#: A transcript window shorter than this carries no retrievable content.
+#: "Oh" and "you" are the two most common ASR hallucinations on silence.
+MIN_TRANSCRIPT_CHARS: Final[int] = 8
+
+#: Whole-utterance hallucinations, matched against the de-duplicated text so
+#: "Thank you. Thank you." is caught by the single phrase.
+HALLUCINATED_UTTERANCES: Final[frozenset[str]] = frozenset(
+    {
+        "thank you", "thanks", "thank you very much", "thank you so much",
+        "thank you for watching", "thanks for watching", "thank you for listening",
+        "please subscribe", "like and subscribe", "subscribe to my channel",
+        "bye", "goodbye", "bye bye", "you", "oh", "hmm", "mm", "uh", "um",
+        "music", "applause", "silence", "laughter", "foreign",
+    }
+)
+
+#: Credit lines the model copies from its training data rather than the audio.
+CREDIT_PREFIXES: Final[tuple[str, ...]] = (
+    "transcript", "subtitles", "subs by", "captions", "translated by",
+    "transcription by", "amara.org", "www.",
+)
+
+_PUNCTUATION = re.compile(r"[^\w\s]+")
+_WHITESPACE = re.compile(r"\s+")
+
+
+def _normalise_utterance(text: str) -> str:
+    """Lower-cased words only - punctuation and symbols carry no speech."""
+    return _WHITESPACE.sub(" ", _PUNCTUATION.sub(" ", text.lower())).strip()
+
+
+def _collapse_repeats(text: str) -> str:
+    """"thank you thank you thank you" -> "thank you".
+
+    Looping on one phrase is the signature of a model decoding silence, so the
+    repetition is removed before the text is matched rather than being treated
+    as length.
+    """
+    words = text.split()
+    for size in range(1, len(words) // 2 + 1):
+        if len(words) % size:
+            continue
+        head = words[:size]
+        if all(words[i : i + size] == head for i in range(0, len(words), size)):
+            return " ".join(head)
+    return text
+
+
+def is_hallucinated_transcript(text: str) -> bool:
+    """True when a transcript window is recognition noise rather than speech."""
+    normalised = _normalise_utterance(text)
+    if not normalised:
+        return True
+    collapsed = _collapse_repeats(normalised)
+    if collapsed in HALLUCINATED_UTTERANCES:
+        return True
+    if collapsed.startswith(CREDIT_PREFIXES):
+        return True
+    return len(collapsed) < MIN_TRANSCRIPT_CHARS
+
+
+def drop_hallucinated(windows: Sequence[TranscriptWindow]) -> list[TranscriptWindow]:
+    """``windows`` with the recognition noise removed, ordinals left intact."""
+    return [window for window in windows if not is_hallucinated_transcript(window.text)]
+
+
 def merge_transcript_segments(
     segments: Sequence[TimedSegment],
     *,
