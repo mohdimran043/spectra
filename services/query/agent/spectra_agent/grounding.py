@@ -38,13 +38,33 @@ def labels_for(evidence_ids: Sequence[str]) -> dict[str, str]:
     return {f"E{index + 1}": evidence_id for index, evidence_id in enumerate(evidence_ids)}
 
 
+#: A fragment that is nothing but citation markers and punctuation. Models
+#: routinely end an answer with one instead of citing each sentence inline.
+_CITATIONS_ONLY = re.compile(r"^(?:\[E\d+\]|[\s,;.)(]|and)+$", re.IGNORECASE)
+
+
 def split_sentences(text: str) -> list[str]:
+    """The asserting sentences of ``text``.
+
+    A bare run of citations is not a sentence - it is the citation of the
+    sentence before it.  Treating it as one made it the only fragment carrying a
+    citation, so the grounding check dropped all the prose and published the
+    markers alone.  Such a run is folded back onto the sentence it follows;
+    with nothing before it, it stands as-is and fails the check on its own.
+    """
     sentences: list[str] = []
     for line in text.splitlines():
         stripped = line.strip().lstrip("-• ").strip()
         if not stripped:
             continue
-        sentences.extend(part.strip() for part in _SENTENCE_SPLIT.split(stripped) if part.strip())
+        for part in _SENTENCE_SPLIT.split(stripped):
+            part = part.strip()
+            if not part:
+                continue
+            if sentences and _CITATIONS_ONLY.match(part):
+                sentences[-1] = f"{sentences[-1]} {part}"
+                continue
+            sentences.append(part)
     return sentences
 
 

@@ -44,8 +44,7 @@ investigations(investigation_id PK, case_id IDX, goal, mode, status, state JSON,
                confidence, created_at, updated_at, user_id, role)
 
 investigation_cases(case_id PK, title, question, investigation_ids JSON, entity_ids JSON,
-                    status, created_at, updated_at, evidence_count, contradiction_count,
-                    claim_count, confidence)
+                    status, created_at, updated_at, evidence_count, claim_count, confidence)
 
 trace_steps(step_id PK, investigation_id IDX, sequence, agent, tool, status, title,
             input_summary, output_summary, started_at, completed_at, latency_ms,

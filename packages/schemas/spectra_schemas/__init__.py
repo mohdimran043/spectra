@@ -44,7 +44,6 @@ from .enums import (
 from .evidence import (
     ApplicationLink,
     Claim,
-    Contradiction,
     EvidenceItem,
     EvidenceLedger,
     GraphEdge,
@@ -131,7 +130,6 @@ __all__ = [
     "Chunk",
     "Claim",
     "ConfidenceLabel",
-    "Contradiction",
     "DatabaseLocator",
     "DocumentLocator",
     "EntityLink",

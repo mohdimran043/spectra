@@ -68,12 +68,6 @@ def claim_support(answer: str, evidence_labels: Sequence[str]) -> float:
     return round(supported / len(assertions), 6)
 
 
-def contradiction_prf(detected: int, expected: int, false_positives: int = 0) -> PRF:
-    true_positive = min(detected, expected)
-    return PRF.from_counts(true_positive, false_positives + max(detected - expected, 0),
-                           max(expected - detected, 0))
-
-
 def investigation_success(
     produced_status: str, expected_status: str, produced_answer: str, expected_conclusion: str
 ) -> float:

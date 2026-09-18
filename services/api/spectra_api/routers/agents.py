@@ -71,7 +71,7 @@ AGENT_CATALOG: dict[str, dict[str, object]] = {
         "label": "Verifier",
         "depends_on": [],
         "alternatives": ["Unverified answer, confidence capped"],
-        "tools": ["verify_claim", "detect_contradictions"],
+        "tools": ["verify_claim"],
     },
 }
 

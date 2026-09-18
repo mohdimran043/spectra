@@ -1,4 +1,5 @@
-"""Stored investigations survive the schema change that removed hypotheses.
+"""Stored investigations survive the schema changes that removed hypotheses
+and the Contradiction Radar.
 
 A schema change must never make previously persisted work unreadable: the
 models are `extra="forbid"`, so a pre-change payload would otherwise raise and
@@ -19,6 +20,17 @@ LEGACY = {
     "status": "completed",
     # removed in the claim refactor
     "hypotheses": [{"hypothesis_id": "H1", "description": "auth timeout", "confidence": 0.2}],
+    # removed with the Contradiction Radar
+    "answer_status": "contested",
+    "contradictions": [
+        {
+            "contradiction_id": "con_1",
+            "statement": "INC1 is both approved and rejected",
+            "evidence_a": "evd_1",
+            "evidence_b": "evd_2",
+        }
+    ],
+    "metrics": {"contradictions": 3, "tool_calls": 7},
     "claims": [
         {
             "claim_id": "C1",
@@ -68,11 +80,34 @@ class TestLegacyUpgrade:
         assert state.investigation_id == "inv_legacy"
 
     def test_retired_top_level_fields_are_dropped(self):
-        assert "hypotheses" not in upgrade_investigation_payload(LEGACY)
+        upgraded = upgrade_investigation_payload(LEGACY)
+        assert "hypotheses" not in upgraded
+        assert "contradictions" not in upgraded
+
+    def test_the_retired_contradiction_metric_is_dropped(self):
+        state = InvestigationState.model_validate(upgrade_investigation_payload(LEGACY))
+        assert not hasattr(state.metrics, "contradictions")
+        assert state.metrics.tool_calls == 7
+
+    def test_the_retired_contested_answer_status_is_mapped(self):
+        state = InvestigationState.model_validate(upgrade_investigation_payload(LEGACY))
+        assert state.answer_status.value == "partially_supported"
 
     def test_the_retired_agent_name_is_mapped(self):
         state = InvestigationState.model_validate(upgrade_investigation_payload(LEGACY))
         assert state.trace[0].agent.value == "claim_builder"
+
+    def test_radar_trace_steps_are_dropped(self):
+        payload = {
+            **LEGACY,
+            "trace": [
+                *LEGACY["trace"],
+                {"step_id": "s2", "investigation_id": "inv_legacy", "sequence": 2,
+                 "agent": "contradiction_radar", "status": "ok"},
+            ],
+        }
+        state = InvestigationState.model_validate(upgrade_investigation_payload(payload))
+        assert [step.agent.value for step in state.trace] == ["claim_builder"]
 
     def test_a_retired_claim_status_is_mapped(self):
         state = InvestigationState.model_validate(upgrade_investigation_payload(LEGACY))

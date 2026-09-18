@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any
 from spectra_config import Settings, get_settings
 from spectra_schemas import (
     BudgetState,
-    Contradiction,
     EvidenceLedger,
     PermissionContext,
     SearchMode,
@@ -47,10 +46,6 @@ def _empty_ledger() -> EvidenceLedger:
     return EvidenceLedger()
 
 
-def _no_contradictions() -> list[Contradiction]:
-    return []
-
-
 @dataclass(frozen=True)
 class ToolContext:
     """Everything a tool is allowed to know about the run it serves."""
@@ -64,7 +59,6 @@ class ToolContext:
     goal: str = ""
     uploaded_asset_ids: tuple[str, ...] = ()
     ledger_provider: Callable[[], EvidenceLedger] = _empty_ledger
-    contradiction_provider: Callable[[], list[Contradiction]] = _no_contradictions
     #: Canonical entity ids this investigation is about, for tools that must
     #: scope their work to the subject rather than the whole corpus.
     focal_entities: tuple[str, ...] = ()
@@ -78,7 +72,6 @@ class ToolContext:
         return replace(
             self,
             ledger_provider=lambda: state.evidence,
-            contradiction_provider=lambda: list(state.contradictions),
             focal_entities=tuple(getattr(state, "entities", ()) or ()),
         )
 
@@ -87,12 +80,6 @@ class ToolContext:
             return self.ledger_provider()
         except Exception:  # pragma: no cover - a broken provider must not kill a tool
             return EvidenceLedger()
-
-    def contradictions(self) -> list[Contradiction]:
-        try:
-            return list(self.contradiction_provider())
-        except Exception:  # pragma: no cover - a broken provider must not kill a tool
-            return []
 
     def flag_enabled(self, flag: str | None) -> bool:
         if not flag:

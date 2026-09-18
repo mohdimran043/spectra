@@ -49,7 +49,7 @@ def _environment(payload: dict[str, Any]) -> list[str]:
     out = ["## Run environment", ""]
     if env.get("gpu_available") is False:
         out.append("> **No GPU was available for this run.** Generation and reranking ran on CPU. "
-                   "Retrieval, entity-resolution, contradiction and abstention figures remain "
+                   "Retrieval, entity-resolution and abstention figures remain "
                    "meaningful; latency figures are not comparable to a GPU run.")
         out.append("")
     models = env.get("models", {})

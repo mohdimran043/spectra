@@ -308,6 +308,58 @@ benchmark suite keeps sixteen categories (`hypothesis_testing` became `claim_ver
 
 ## Current State
 
+## Phase 17 — The Contradiction Radar is removed  ✅ 2026-09-18
+
+Removed on the operator's decision: the radar dominated the investigation view with a red
+`CONTRADICTION DETECTED` band, and what it reported was mostly noise. Investigating that noise found
+three real defects in it before it was cut — no deduplication (one disagreement was reported once per
+document *pair*, turning a single conflict into eighteen), a dedup key that included a per-pair
+entity id so duplicates survived anyway, and no scoping, so conflicts from unrelated corners of the
+corpus surfaced on questions they had nothing to do with. Fixing those took 18 conflicts to 6; two of
+the remaining six were still comparing metadata rather than facts.
+
+**Deleted:** the `contradiction` agent package and its `detect_contradictions` tool; the
+`ContradictionRadar` detector in the evidence layer; the `Contradiction` model; `AnswerStatus.CONTESTED`;
+`AgentName.CONTRADICTION`; `QueryIntent.CONTRADICTION`; the `contradiction_prf` metric; the
+`contradiction_count` column; and the console's radar panel.
+
+**Kept, deliberately:** the **Disproof Agent**. It is a *search* — "go and find the evidence that
+would break this claim" — not a pairwise comparator, and deleting it would leave SPECTRA only ever
+looking for confirming evidence, which is the failure mode the whole design exists to prevent. Its
+result is now a line on the claim rather than a panel of its own. `EvidenceStance.CONTRADICTING`,
+`Claim.contradicting_evidence`, `ClaimStatus.CONTRADICTED`/`REFUTED` and the `CONTRADICTS` graph edge
+all survive as that agent's output.
+
+**Consequences worked through:**
+- The loop is now plan → retrieve → observe → replan → disproof → verify → synthesise.
+- The Verifier's third mandatory check became `no_counter_evidence`: it asks the cited evidence
+  directly instead of consulting the radar, so it still has four checks and still has teeth.
+- Questions phrased "the sources disagree about X" classify as `INVESTIGATION` and run the full loop.
+- The benchmark category `contradiction_detection` became `conflicting_sources`. The corpus still
+  plants two disagreeing approval memos; what is measured is that SPECTRA refuses to assert either
+  side as settled.
+- The guided demo's radar scenario became **"Knowing When To Stop"**, which demonstrates abstention.
+- Investigations persisted before the change are upgraded on read, so all 18 stored runs still open.
+
+**Two bugs found while verifying, both pre-existing, both fixed:**
+- **The published answer was a row of citation markers.** The model groups its citations into a
+  trailing `[E1][E2][E5]` block instead of citing each sentence inline. `split_sentences` treated that
+  block as a sentence — the only one carrying a citation — so the grounding check dropped every prose
+  sentence and published the markers alone. A bare run of citations is now folded onto the sentence it
+  follows, the prompt forbids trailing citation blocks, and a generated answer that loses all its
+  prose falls through to the extractive path instead of being published. Ten tests pin it.
+- **`investigation_cases` was never rebuilt after Phase 16** and still carried `hypothesis_count` with
+  no `claim_count`. The table was empty so no data was lost, but any write to it would have failed.
+
+Verified: 173 Python tests, 25 frontend tests, ruff clean, `tsc --noEmit` clean, all 11 console routes
+200, and a live deep investigation of TX83155 that returns the correct root cause in cited prose.
+
+Known remaining: the audio agent can exceed its 20 s tool timeout on a cold model load, which the run
+reports honestly as `degraded`. The leading claim is sometimes a symptom rather than the root cause —
+the synthesised prose still leads with the right answer, but claim ordering deserves a look.
+
+---
+
 Phases 0–11 and 13 are complete and tested: contracts, storage, model gateway, ingestion, search,
 entity resolution, evidence, the Brain, connectors, the API/worker layer, and the demo dataset plus
 evaluation harness. The reasoning layer is claim-centric as of Phase 16. The RTX 4090 is usable as

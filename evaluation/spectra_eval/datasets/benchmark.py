@@ -202,7 +202,7 @@ def load_suites(root: Path | None = None) -> dict[str, list[BenchmarkQuestion]]:
         in {
             "multi_hop_investigation",
             "temporal_reasoning",
-            "contradiction_detection",
+            "conflicting_sources",
             "claim_verification",
             "evidence_sufficiency",
             "abstention",

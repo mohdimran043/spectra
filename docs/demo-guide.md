@@ -55,17 +55,21 @@ resolved entities.
 > Investigate why this transaction failed and show me the supporting evidence.
 
 The full pipeline: plan → multi-modal retrieval → entity resolution → claims → support search →
-**disproof search** → contradiction check → verification → timeline → cited answer → application links.
+**disproof search** → verification → timeline → cited answer → application links.
 
 **Watch for:** the Disproof Agent explicitly searching for evidence that would refute the leading
 claim, and reporting "no conflicting evidence found" as a positive result.
 
-## Scenario 5 — Contradiction
+## Scenario 5 — Knowing When To Stop
 
-> The sources disagree about whether the incident was approved. Investigate.
+> What caused the Reykjavik warehouse fire in 2019?
 
-**Watch for:** `⚠ CONTRADICTION DETECTED`, then the adjudication — version status, recency, source
-reliability — with the reasoning shown rather than the conflict quietly resolved.
+The question is asked of a corpus that holds nothing on the subject. Retrieval runs in full and
+returns items that are simply off-topic. No claim is stated: the answer is **insufficient evidence**
+with the gaps named.
+
+**Watch for:** the system declining to assert anything, and naming exactly what would be needed to
+answer the question.
 
 ## Scenario 6 — Timeline
 
@@ -83,7 +87,7 @@ ordered timeline.
 | 1 | Upload a screenshot with a transaction id, then "Investigate why this transaction failed and show me the supporting evidence." | the full image→OCR→entity→DB→documents→video→claims→disproof→verify→timeline→answer→links journey |
 | 2 | "Find where the architecture change was discussed." | query→video→transcript→timestamp→frame→related document |
 | 3 | "Which customers mentioned in the engineering meeting had more than five failed payments?" | video→entity extraction→SQL aggregation→application links |
-| 4 | "The sources disagree about whether the incident was approved. Investigate." | contradiction detection, version/timestamp analysis, reliability adjudication |
+| 4 | "What caused the Reykjavik warehouse fire in 2019?" | graceful abstention — the system declines to assert anything when the corpus holds no relevant evidence |
 | 5 | Disable the Vision Agent, then investigate. | graceful degradation — the Brain replans, still answers, and says what was unavailable |
 
 Run them with `make test-e2e`, or interactively from `/demo`.

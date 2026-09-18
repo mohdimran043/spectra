@@ -34,9 +34,9 @@ run SQL, view autopsy, export), `viewer` (may search and view autopsy only).
 SPECTRA answers investigative questions across documents, images, video, audio, databases and a
 knowledge graph at once, and shows its work. Success is not "the model produced fluent text" —
 success is that every asserted fact carries an openable citation, that every claim was tested
-against the evidence that would break it rather than assumed, that contradictions were surfaced
-rather than smoothed over, and that the system abstains out loud when the evidence does not
-support an answer.
+against the evidence that would break it rather than assumed, that whatever the disproof probe
+turned up against a claim is shown rather than smoothed over, and that the system abstains out
+loud when the evidence does not support an answer.
 
 ## Positioning
 
@@ -75,8 +75,8 @@ Confirmed capabilities, from `docs/api.md` and the schema package:
   search by upload or `image_asset_id`, and NL→SQL database query that always returns the exact
   generated SQL and params for inspection.
 - Investigations with a live agent trace, claims carrying their own confidence and disproof
-  probe, an evidence ledger, a contradiction list, a timeline, application deep links, an
-  explanation of source selection, and a post-hoc Search Autopsy.
+  probe, an evidence ledger, a timeline, application deep links, an explanation of source
+  selection, and a post-hoc Search Autopsy.
 - Entity resolution with a full candidate list, winning method and explanation; a knowledge graph
   view; a source registry with health checks and sync; a model runtime dashboard with GPU
   telemetry and load/unload events; runtime agent enable/disable with no restart; six guided
@@ -130,7 +130,7 @@ shim is permanent.
 
 1. **Every fact is openable.** A claim the operator cannot click through to its exact page,
    frame, segment or row is not a finding, it is a rumour.
-2. **Doubt is content, not failure.** Contradictions, disproof probes, rejected evidence and
+2. **Doubt is content, not failure.** Disproof probes, counter-evidence, rejected evidence and
    abstention get first-class presentation — never a collapsed footnote. A claim nobody tried to
    falsify is shown as unchallenged, not as settled.
 3. **Show the machinery.** Score breakdowns, generated SQL, source selection reasons, per-stage

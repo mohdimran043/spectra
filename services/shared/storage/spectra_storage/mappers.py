@@ -296,12 +296,18 @@ def investigation_values(state: InvestigationState) -> dict[str, Any]:
     }
 
 
-# Investigations persisted before the competing-hypothesis engine was removed
-# carry fields the current models reject (`extra="forbid"`). A schema change
-# must not make stored work unreadable, so those payloads are upgraded on read.
-LEGACY_DROPPED_KEYS = ("hypotheses",)
+# Investigations persisted before the competing-hypothesis engine and the
+# Contradiction Radar were removed carry fields the current models reject
+# (`extra="forbid"`). A schema change must not make stored work unreadable, so
+# those payloads are upgraded on read.
+LEGACY_DROPPED_KEYS = ("hypotheses", "contradictions")
 LEGACY_ITEM_DROPPED_KEYS = ("hypothesis_ids", "evidence_ids")
+LEGACY_METRICS_DROPPED_KEYS = ("contradictions",)
 LEGACY_AGENT_NAMES = {"hypothesis_engine": "claim_builder"}
+# The radar was the only producer of "contested"; such a run is re-read as what
+# the evidence actually showed, which is partial support.
+LEGACY_ANSWER_STATUS = {"contested": "partially_supported"}
+LEGACY_TRACE_DROPPED_AGENTS = ("contradiction_radar",)
 LEGACY_CLAIM_STATUS = {
     "contested": "weak",
     "open": "insufficient",
@@ -324,13 +330,22 @@ def upgrade_investigation_payload(payload: dict[str, Any]) -> dict[str, Any]:
             items.append(item)
         state["evidence"] = {**evidence, "items": items}
 
+    metrics = state.get("metrics")
+    if isinstance(metrics, dict):
+        state["metrics"] = {
+            k: v for k, v in metrics.items() if k not in LEGACY_METRICS_DROPPED_KEYS
+        }
+
+    status = state.get("answer_status")
+    if status in LEGACY_ANSWER_STATUS:
+        state["answer_status"] = LEGACY_ANSWER_STATUS[status]
+
     trace = state.get("trace")
     if isinstance(trace, list):
         state["trace"] = [
             {**step, "agent": LEGACY_AGENT_NAMES.get(step.get("agent"), step.get("agent"))}
-            if isinstance(step, dict)
-            else step
             for step in trace
+            if isinstance(step, dict) and step.get("agent") not in LEGACY_TRACE_DROPPED_AGENTS
         ]
 
     claims = state.get("claims")
@@ -370,7 +385,6 @@ def case_values(case: InvestigationCase) -> dict[str, Any]:
         "created_at": case.created_at,
         "updated_at": case.updated_at,
         "evidence_count": case.evidence_count,
-        "contradiction_count": case.contradiction_count,
         "claim_count": case.claim_count,
         "confidence": case.confidence,
     }
@@ -387,7 +401,6 @@ def case_model(row: InvestigationCaseRow) -> InvestigationCase:
         created_at=row.created_at,
         updated_at=row.updated_at,
         evidence_count=row.evidence_count,
-        contradiction_count=row.contradiction_count,
         claim_count=row.claim_count,
         confidence=row.confidence,
     )

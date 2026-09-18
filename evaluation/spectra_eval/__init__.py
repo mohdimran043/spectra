@@ -2,7 +2,7 @@
 
 Measures the capabilities the architecture claims - cross-modal entity
 resolution, evidence-grounded claims, disconfirming search,
-contradiction-aware reasoning, temporal reasoning, sufficiency and abstention -
+temporal reasoning, sufficiency and abstention -
 against the same corpus through five selectable strategies.
 """
 

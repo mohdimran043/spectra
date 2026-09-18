@@ -21,7 +21,7 @@ from ...tools.base import Tool
 from ...tools.modality_search import ModalitySearchTool
 from ...tools.payloads import evidence_payload
 from ...tools.schemas import EVIDENCE_OUTPUT, SEARCH_INPUT, obj, string
-from ...tools.timeouts import LOCATOR_TIMEOUT_SECONDS, SEARCH_MEDIA_TIMEOUT_SECONDS
+from ...tools.timeouts import LOCATOR_TIMEOUT_SECONDS, SEARCH_TIMEOUT_SECONDS
 
 # A claim pinned to a video second is checked by watching a few seconds either
 # side of it, so the default window is symmetric and small.
@@ -40,7 +40,7 @@ class SearchVideosTool(ModalitySearchTool):
         agent=AgentName.VIDEO,
         input_schema=SEARCH_INPUT,
         output_schema=EVIDENCE_OUTPUT,
-        timeout_seconds=SEARCH_MEDIA_TIMEOUT_SECONDS,
+        timeout_seconds=SEARCH_TIMEOUT_SECONDS,
         gpu_heavy=True,
         requires_flag="video",
         cost_hint=2.5,

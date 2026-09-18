@@ -19,13 +19,13 @@ observes, revises, actively tries to *refute itself*, and knows when to stop —
                           evidence sufficient? ──────────────────┘ no
                                      │ yes
                                      ▼
-      disproof the leading claim → contradiction check → verify → synthesise
+          disproof the leading claim → verify → synthesise
 ```
 
 Iteration is mandatory and real. The Brain replans based on what it actually observed: a database
-hit introduces new entities, which open document and video searches, which surface a contradiction,
-which changes the status of a claim and sends the Brain back for the retrieval round that settles
-it.
+hit introduces new entities, which open document and video searches, which turn up an exhibit that
+weighs against a claim, which changes that claim's status and sends the Brain back for the retrieval
+round that settles it.
 
 ## 2. State
 
@@ -35,7 +35,7 @@ so a partially-failed iteration can never leave half-applied state.
 
 ```
 goal · intent · mode · plan · entities · evidence(ledger)
-contradictions · timeline · verification · tool_history · trace
+timeline · verification · tool_history · trace
 budget · confidence · answer · answer_status · application_links · claims
 metrics · degraded + reasons · agent_availability
 ```
@@ -43,8 +43,9 @@ metrics · degraded + reasons · agent_availability
 ## 3. Query understanding — two tiers
 
 A deterministic rule router runs first: enterprise-identifier grammars, temporal markers, modality
-words (`video`, `screenshot`, `said`, `diagram`), aggregation words, contradiction words. It
-classifies intent and complexity and extracts ids and keywords.
+words (`video`, `screenshot`, `said`, `diagram`), aggregation words, and words signalling that
+sources disagree — which route to a full investigation. It classifies intent and complexity and
+extracts ids and keywords.
 
 The fast brain then *optionally refines* that classification under a strict JSON schema. If no
 generative runtime is available, the rule router alone still produces a correct classification, and
@@ -64,7 +65,7 @@ search_graph · expand_graph
 get_evidence · get_source_metadata
 get_document_page · get_video_timestamp · get_image
 verify_claim · search_supporting_evidence · search_disconfirming_evidence
-detect_contradictions · build_timeline · open_application_record
+build_timeline · open_application_record
 ```
 
 The Brain uses structured tool calling. Independent retrieval tools run concurrently via
@@ -100,7 +101,8 @@ Status:
 | `insufficient` | not enough evidence either way |
 
 **Each claim is scored on its own evidence alone**: supporting weight, independent-source count and
-**evidence diversity**, minus a contradiction penalty. Claims do not compete and their confidences
+**evidence diversity**, minus a penalty for whatever the disproof probe found against it. Claims do
+not compete and their confidences
 are not normalised, so a well-supported conclusion keeps a high confidence however many other things
 the corpus also says.
 
@@ -135,41 +137,29 @@ counter-evidence was looked for and not found, not because no alternative was of
 "No conflicting evidence found" is recorded as a real, positive outcome — it is *why* a conclusion
 earns high confidence, not an absence of work.
 
-## 7. Contradiction radar
-
-Contradictions are detected structurally, not guessed:
-
-- **Value conflicts** — `(entity, attribute, value)` triples extracted with attribute lexicons;
-  two different values for the same pair is a conflict.
-- **Polarity conflicts** — negation-aware matching of the same predicate.
-- **Temporal impossibility** — ordering that the timestamps contradict.
-
-They are then **explained and adjudicated** using recency, version status (superseded loses),
-source reliability and specificity. The resolution and its reasoning are shown. The system explains
-contradictions; it never hides them.
-
-## 8. Verification
+## 7. Verification
 
 Before an answer is emitted, the Verifier checks:
 
 1. every entity named in the claim actually appears in cited evidence;
 2. at least N *independent* sources support it;
-3. no unresolved contradiction touches it;
+3. `no_counter_evidence` — nothing among the cited items counts against it, which in practice
+   means the disproof probe came back empty;
 4. evidence diversity is above threshold.
 
 Each check is reported individually. A model cross-check is optional; if unavailable, the
 deterministic checks stand and the response says so.
 
-## 9. Evidence diversity — an explicit first-class quantity
+## 8. Evidence diversity — an explicit first-class quantity
 
 Three paragraphs from one PDF must not outweigh one database record + one PDF + one video. Diversity
 is computed from distinct sources, distinct modalities and distinct assets, and it damps claim
 confidence directly. Independent corroboration is the thing being measured, not volume.
 
-## 10. Sufficiency and abstention
+## 9. Sufficiency and abstention
 
-Sufficiency combines evidence weight, count, diversity, independent-source count and a contradiction
-penalty. Below threshold, SPECTRA **abstains**:
+Sufficiency combines evidence weight, count, diversity, independent-source count and a penalty for
+counter-evidence the disproof probe returned. Below threshold, SPECTRA **abstains**:
 
 > Insufficient evidence. I found related information but cannot establish the requested conclusion
 > with sufficient support.
@@ -178,7 +168,7 @@ penalty. Below threshold, SPECTRA **abstains**:
 `AnswerStatus`, and it is measured in the benchmark suite. A system that cannot say "I don't know"
 is not an investigation system.
 
-## 11. Grounded synthesis
+## 10. Grounded synthesis
 
 Every sentence in the answer must be traceable to an `EvidenceItem`. With a generative model, the
 prompt contains **only** evidence excerpts, inline citations are required, and each citation is
@@ -186,7 +176,7 @@ then **verified to exist** — unsupported sentences are dropped or flagged. Wit
 is assembled extractively from the highest-weight evidence. There is no configuration in which
 SPECTRA emits an uncited factual claim.
 
-## 12. Budgets
+## 11. Budgets
 
 ```yaml
 fast: { max_tool_calls: 5,  max_latency_seconds: 3,  iterations: 1 }
@@ -198,7 +188,7 @@ Checked before every tool call and every iteration. Exhaustion is a clean stop w
 silent truncation. The Brain also stops *early* when evidence is already sufficient; the budget is a
 ceiling, not a quota to spend.
 
-## 13. Degradation
+## 12. Degradation
 
 `settings.agent_flags()` plus runtime overrides from the Agent Control Center determine what exists.
 A disabled agent is excluded from planning and reported honestly:
@@ -213,7 +203,7 @@ Available alternatives: Documents, Videos, Database
 The Brain plans around the gap, the investigation completes if the remaining evidence is sufficient,
 and `degraded` + `degraded_reasons` say what was missing. No crashes. No fabricated substitutes.
 
-## 14. Observability without chain-of-thought exposure
+## 13. Observability without chain-of-thought exposure
 
 Every step emits a `TraceStep`:
 
@@ -225,11 +215,11 @@ input_summary · output_summary · latency_ms · evidence_ids
 These are **action summaries**: "Searching database", "3 relevant documents", "Evidence consistent".
 Internal model reasoning is never exposed. Traces stream over SSE and are persisted for replay.
 
-## 15. Search Autopsy
+## 14. Search Autopsy
 
 After an investigation, the full forensic record: sources considered, candidates retrieved, evidence
-used vs rejected (with reasons), tool-call count and breakdown, contradictions, total and per-stage
-latency, models used, GPU peak, `claims_made` / `claims_refuted`, and evidence diversity.
+used vs rejected (with reasons), tool-call count and breakdown, total and per-stage latency, models
+used, GPU peak, `claims_made` / `claims_refuted`, and evidence diversity.
 
 It exists because "the system found the right answer" is a much weaker claim than "here is exactly
 what the system considered, what it discarded, and why."

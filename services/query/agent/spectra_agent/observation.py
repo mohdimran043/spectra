@@ -1,7 +1,7 @@
 """Turning tool results into investigation state.
 
 The execution engine handles evidence; everything else a tool can return -
-entities, contradictions, timeline events, application links, verification -
+entities, timeline events, application links, verification -
 is absorbed here, so the loop itself stays about *deciding what to do next*.
 """
 
@@ -13,7 +13,6 @@ from typing import Any
 from spectra_config.logging import get_logger
 from spectra_schemas import (
     ApplicationLink,
-    Contradiction,
     InvestigationState,
     TimelineEvent,
     ToolResult,
@@ -31,7 +30,6 @@ def observe(state: InvestigationState, results: Sequence[ToolResult]) -> Investi
         if not result.ok or not result.data:
             continue
         state = _entities(state, result)
-        state = _contradictions(state, result)
         state = _timeline(state, result)
         state = _links(state, result)
         state = _verification(state, result)
@@ -49,15 +47,6 @@ def _entities(state: InvestigationState, result: ToolResult) -> InvestigationSta
     merged = list(state.entities)
     merged.extend(entity for entity in found if entity not in merged)
     return state_ops.touch(state, entities=merged) if merged != state.entities else state
-
-
-def _contradictions(state: InvestigationState, result: ToolResult) -> InvestigationState:
-    known = {c.contradiction_id for c in state.contradictions}
-    found = [c for c in validate(Contradiction, result.data.get("contradictions") or []) if c.contradiction_id not in known]
-    if not found:
-        return state
-    metrics = state.metrics.model_copy(update={"contradictions": state.metrics.contradictions + len(found)})
-    return state_ops.touch(state, contradictions=[*state.contradictions, *found], metrics=metrics)
 
 
 def _timeline(state: InvestigationState, result: ToolResult) -> InvestigationState:

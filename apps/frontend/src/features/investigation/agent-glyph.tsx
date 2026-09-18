@@ -30,7 +30,6 @@ const AGENT_ICON: Record<AgentName, ComponentType<IconProps>> = {
   disproof_agent: IconDisproof,
   verifier: IconVerifier,
   timeline_builder: IconTimeline,
-  contradiction_radar: IconWarning,
 };
 
 const AGENT_NAMES: ReadonlySet<string> = new Set<string>(agentNameSchema.options);
@@ -52,7 +51,6 @@ const FLAG_ALIAS: Readonly<Record<string, AgentName>> = {
   database: 'database_agent',
   graph: 'graph_agent',
   timeline: 'timeline_builder',
-  contradiction: 'contradiction_radar',
 };
 
 export function resolveAgentName(name: string): AgentName | null {

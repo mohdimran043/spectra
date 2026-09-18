@@ -23,7 +23,6 @@ from spectra_schemas import (
     Claim,
     ClaimStatus,
     ConfidenceLabel,
-    Contradiction,
     DocumentLocator,
     EntityType,
     EvidenceItem,
@@ -180,7 +179,7 @@ def _answer() -> InvestigationAnswer:
                 disproof_probe="A successful authentication call for TX82931 inside the failure window.",
                 disproof_searched=True,
                 verified=True,
-                verification_note="Two independent sources; no unresolved contradiction.",
+                verification_note="Two independent sources; no counter-evidence found.",
                 rationale="The failure_reason field and the post-mortem agree.",
             ),
             Claim(
@@ -193,16 +192,6 @@ def _answer() -> InvestigationAnswer:
                 disproof_searched=True,
                 verified=True,
             ),
-        ],
-        contradictions=[
-            Contradiction(
-                contradiction_id="con_1",
-                statement="INC1829 status is reported as both 'approved' and 'rejected'",
-                evidence_a="evd_2", evidence_b="evd_3", kind="value_conflict",
-                detail="The superseded draft says rejected; the approved v2 says approved.",
-                resolution="Resolved in favour of evd_2: approved beats superseded.",
-                resolved_in_favour_of="evd_2", severity=0.7, entity_id="ent_incident_1",
-            )
         ],
         timeline=[
             TimelineEvent(event_id="ev_1", occurred_at=NOW, label="Transaction created",
@@ -227,14 +216,14 @@ def _answer() -> InvestigationAnswer:
             candidates_retrieved=184, evidence_used=3, evidence_rejected=29,
             rejection_reasons={"below relevance floor": 24, "permission denied": 5},
             tool_calls=18, tool_breakdown={"search_documents": 6, "query_database": 3},
-            contradictions=1, total_latency_ms=8400.0,
+            total_latency_ms=8400.0,
             stage_latency_ms={"candidate_generation": 31.2, "rerank": 88.0},
             models_used=["ollama/qwen3:30b-a3b", "transformers/BAAI/bge-m3"],
             claims_made=2, claims_refuted=0, evidence_diversity=0.95,
         ),
         metrics=InvestigationMetrics(
             total_latency_ms=8400.0, tool_calls=18, iterations=3, candidates_retrieved=184,
-            evidence_used=3, evidence_rejected=29, contradictions=1,
+            evidence_used=3, evidence_rejected=29,
             claims_made=2, claims_refuted=0,
             models_used=["ollama/qwen3:30b-a3b"],
             sources_considered=["src_enterprise", "src_docs"],

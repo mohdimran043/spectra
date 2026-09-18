@@ -15,7 +15,7 @@
 SPECTRA is an agentic enterprise investigation platform. Given a question, it autonomously
 investigates across **documents, images, audio, video, structured databases and configurable
 external sources**. It resolves entities across modalities, builds **evidence-grounded claims**,
-retrieves supporting *and disconfirming* evidence, detects contradictions,
+retrieves supporting *and disconfirming* evidence,
 reconstructs timelines, maintains an evidence graph, verifies its conclusions, exposes full
 provenance, and links every discovered entity to the corresponding enterprise application record.
 
@@ -24,14 +24,15 @@ and billions of rows without a rewrite.
 
 ## Why it is different
 
-Most "multimodal RAG" systems retrieve, concatenate and generate. SPECTRA is built around four ideas
-that retrieval systems do not have:
+Most "multimodal RAG" systems retrieve, concatenate and generate. SPECTRA is built around three
+ideas that retrieval systems do not have:
 
 **1. Claims, grounded in the evidence that produced them.** For an investigation question it derives
 claims from what it actually retrieved, tied to the focal entity, and scores each one **on its own
-evidence alone**: supporting weight, independent sources, diversity, minus a contradiction penalty.
-Every claim carries a status (`supported / weak / contradicted / refuted / insufficient`), the
-evidence ids on both sides, and the probe used to try to break it. Claims are not ranked against each
+evidence alone**: supporting weight, independent sources, diversity, minus a penalty for whatever
+the disproof probe turned up against it. Every claim carries a status
+(`supported / weak / contradicted / refuted / insufficient`), the evidence ids on both sides, and the
+probe used to try to break it. Claims are not ranked against each
 other and their confidences are not normalised, so a well-supported conclusion keeps a high
 confidence instead of having it divided among alternatives it was never in competition with.
 
@@ -41,13 +42,10 @@ goes looking. A support-only system finds three documents that agree with its fi
 95% confidence. This one goes hunting for the document that disagrees; a claim the probe knocks down
 is marked `refuted` and drops out.
 
-**3. Contradictions are explained, never hidden.** When the database says APPROVED and a document
-says REJECTED, SPECTRA surfaces the conflict and adjudicates it using version status, recency,
-source reliability and specificity — showing its reasoning.
-
-**4. It can say "I don't know."** Evidence sufficiency is computed from weight, count, independent
-sources, **diversity** and a contradiction penalty. Below threshold, SPECTRA abstains and says what
-is missing. Abstention is a measured outcome in the benchmark suite, not an error path.
+**3. It can say "I don't know."** Evidence sufficiency is computed from weight, count, independent
+sources, **diversity** and the weight of anything found against the claim. Below threshold, SPECTRA
+abstains and says what is missing. Abstention is a measured outcome in the benchmark suite, not an
+error path.
 
 Plus one engineering idea that makes the rest possible: **ingestion and search are strictly
 separated**. Every expensive operation — OCR, ASR, vision, embedding, scene detection — happens once,
@@ -68,7 +66,6 @@ Source → Connector/Upload                      Query / image upload
   → evidence graph                                  ├ evidence graph
                                                     ├ build claims
                                                     ├ support + DISPROOF search
-                                                    ├ contradiction check
                                                     ├ verify
                                                     └ confidence decision
                                                  → answer + evidence + provenance
@@ -209,8 +206,7 @@ Find where the engineer discusses the authentication problem    → video + time
 Find architecture diagrams showing three database nodes         → text → image
 Which customers mentioned in the engineering meeting had
   more than five failed payments?                               → video → entities → SQL
-The sources disagree about whether the incident was approved.
-  Investigate.                                                  → contradiction radar
+What caused the Reykjavik warehouse fire in 2019?               → abstains: not in corpus
 Investigate why this transaction failed and show me the
   supporting evidence.                                          → full investigation
 ```

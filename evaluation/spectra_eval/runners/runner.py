@@ -49,7 +49,6 @@ class QuestionScore:
     claim_support: float = 0.0
     investigation_success: float = 0.0
     abstention: str = ""
-    contradictions: int = 0
     claims: int = 0
     latency_ms: float = 0.0
     tool_calls: int = 0
@@ -74,7 +73,6 @@ def score_question(question: BenchmarkQuestion, result: BaselineResult, baseline
             result.status, question.expected_status, result.answer, question.expected_conclusion
         ),
         abstention=abstention_outcome(result.status, question.expected_status),
-        contradictions=result.contradictions,
         claims=result.claims,
         latency_ms=result.latency_ms,
         tool_calls=result.tool_calls,

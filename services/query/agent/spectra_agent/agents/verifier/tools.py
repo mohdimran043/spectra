@@ -18,7 +18,7 @@ class VerifyClaimTool(Tool):
         name="verify_claim",
         description=(
             "Check a claim against the gathered evidence: entity presence, independent "
-            "source count, unresolved contradictions and evidence diversity."
+            "source count, counter-evidence and evidence diversity."
         ),
         agent=AgentName.VERIFIER,
         input_schema=obj(
@@ -43,9 +43,7 @@ class VerifyClaimTool(Tool):
                 update={"items": [i for i in ledger.items if i.evidence_id in wanted]}
             )
         verifier = Verifier(settings=ctx.settings, gateway=ctx.services.gateway)
-        result = await verifier.verify(
-            args["claim"], ledger, ctx, contradictions=ctx.contradictions()
-        )
+        result = await verifier.verify(args["claim"], ledger, ctx)
         return self.success(
             data={"verification": result.model_dump(mode="json")},
             summary=f"verification {'passed' if result.supported else 'failed'}: {result.note}",

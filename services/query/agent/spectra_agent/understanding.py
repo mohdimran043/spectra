@@ -121,9 +121,7 @@ class QueryUnderstandingService:
 def _classify(
     text: str, ids: list[str], modalities: list[Modality], temporal: str | None
 ) -> QueryIntent:
-    if contains_any(text, CONTRADICTION_TERMS):
-        return QueryIntent.CONTRADICTION
-    if contains_any(text, INVESTIGATION_TERMS):
+    if contains_any(text, CONTRADICTION_TERMS) or contains_any(text, INVESTIGATION_TERMS):
         return QueryIntent.INVESTIGATION
     if contains_any(text, COMPARISON_TERMS):
         return QueryIntent.COMPARISON
@@ -145,7 +143,7 @@ def _media_modalities(modalities: list[Modality]) -> list[Modality]:
 
 
 def _complexity(intent: QueryIntent, ids: list[str], modalities: list[Modality]) -> str:
-    if intent in (QueryIntent.INVESTIGATION, QueryIntent.CONTRADICTION):
+    if intent is QueryIntent.INVESTIGATION:
         return "complex"
     if len(modalities) >= COMPLEX_MODALITY_COUNT:
         return "complex"
@@ -189,7 +187,6 @@ _INTENT_REASON: dict[QueryIntent, str] = {
     QueryIntent.MEDIA_LOCATION: "The question asks where something appears, so media indexes lead.",
     QueryIntent.INVESTIGATION: "The question asks for a cause, so it runs as a full investigation with claims that get probed.",
     QueryIntent.TEMPORAL: "The question is about sequence, so evidence is assembled into a timeline.",
-    QueryIntent.CONTRADICTION: "The question asks about conflicting information, so contradiction detection is mandatory.",
     QueryIntent.COMPARISON: "The question compares two things, so evidence is gathered for each side.",
 }
 

@@ -39,7 +39,7 @@ roles:
 
   deep_brain:
     enabled: true
-    purpose: "Planning, claim extraction, synthesis, contradiction reasoning"
+    purpose: "Planning, claim extraction, synthesis, disproof reasoning"
     candidates:
       - { runtime: ollama,        model: "qwen3:30b-a3b",                              vram_mb: 19000, device: auto }
       - { runtime: vllm,          model: "Qwen/Qwen3-30B-A3B-Instruct-2507",           vram_mb: 21000, device: cuda }

@@ -39,7 +39,7 @@ API_DESCRIPTION = (
     "Evidence-grounded multimodal enterprise investigation agent. "
     "Resolves entities across documents, images, audio, video and structured databases; "
     "states only what the evidence supports and actively searches for evidence against it; "
-    "detects contradictions; and returns every claim with its provenance."
+    "searches for evidence that would refute them; and returns every claim with its provenance."
 )
 API_VERSION = "1.0.0"
 

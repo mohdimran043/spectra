@@ -77,12 +77,6 @@ export function RecentRecord() {
                       </StatusChip>
                     )}
                     {row.mode && <Mark>{row.mode}</Mark>}
-                    {row.contradiction_count !== undefined && row.contradiction_count > 0 && (
-                      <StatusChip tone="stamp">
-                        {row.contradiction_count} contradiction
-                        {row.contradiction_count === 1 ? '' : 's'}
-                      </StatusChip>
-                    )}
                     <span className="ml-auto text-micro text-ink-2">
                       {formatRelative(row.updated_at ?? row.created_at)}
                     </span>

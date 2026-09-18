@@ -24,7 +24,7 @@ function probeOutcome(claim: Claim): string {
     return 'SPECTRA has not run this search yet. Nothing has challenged the claim.';
   }
   return REFUTING_STATUSES.has(claim.status)
-    ? 'SPECTRA searched for it — and found it. See the contradicting exhibits.'
+    ? 'SPECTRA searched for it — and found it. See the exhibits it turned up.'
     : 'SPECTRA searched for it and did not find it.';
 }
 
@@ -64,7 +64,7 @@ function EvidenceLink({
   onOpen,
 }: {
   count: number;
-  kind: 'supporting' | 'contradicting';
+  kind: 'supporting' | 'counter';
   onOpen: () => void;
 }) {
   const supporting = kind === 'supporting';
@@ -80,7 +80,7 @@ function EvidenceLink({
           : 'text-stamp decoration-stamp/50 hover:decoration-stamp focus-visible:outline-stamp',
       )}
     >
-      Show {count} {kind} in ledger
+      Show {count} {supporting ? 'supporting' : 'counter'} in ledger
     </button>
   );
 }
@@ -94,7 +94,7 @@ export function ClaimCard({
   onSelectEvidence?: (evidenceIds: readonly string[], label: string) => void;
 }) {
   const supporting = claim.supporting_evidence.length;
-  const contradicting = claim.contradicting_evidence.length;
+  const against = claim.contradicting_evidence.length;
 
   return (
     <li className="border-b border-rule px-3 py-2.5 last:border-b-0">
@@ -159,15 +159,15 @@ export function ClaimCard({
             <span className="tabular">
               <span className="text-seal">{supporting}</span> supporting
             </span>
-            <span className="tabular">
-              <span className={contradicting > 0 ? 'font-semibold text-stamp' : ''}>
-                {contradicting}
-              </span>{' '}
-              contradicting
-            </span>
+            {against > 0 && (
+              <span className="tabular">
+                <span className="font-semibold text-stamp">{against}</span> found against it by
+                the disproof probe
+              </span>
+            )}
           </div>
 
-          {onSelectEvidence && supporting + contradicting > 0 && (
+          {onSelectEvidence && supporting + against > 0 && (
             <div className="flex flex-wrap gap-x-3 gap-y-1">
               {supporting > 0 && (
                 <EvidenceLink
@@ -178,14 +178,14 @@ export function ClaimCard({
                   }
                 />
               )}
-              {contradicting > 0 && (
+              {against > 0 && (
                 <EvidenceLink
-                  count={contradicting}
-                  kind="contradicting"
+                  count={against}
+                  kind="counter"
                   onOpen={() =>
                     onSelectEvidence(
                       claim.contradicting_evidence,
-                      `${claim.claim_id} contradicting`,
+                      `${claim.claim_id} counter-evidence`,
                     )
                   }
                 />

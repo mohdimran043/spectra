@@ -77,7 +77,6 @@ export function Conclusion({ answer }: { answer: InvestigationAnswer }) {
   if (answer.status === 'insufficient_evidence') return <Abstention answer={answer} />;
 
   const sources = independentSourceCount(answer);
-  const contradictions = answer.contradictions.length;
 
   return (
     <Leaf>
@@ -113,12 +112,6 @@ export function Conclusion({ answer }: { answer: InvestigationAnswer }) {
             value={`${sources} independent ${sources === 1 ? 'source' : 'sources'}`}
             mono={false}
           />
-          <Reading
-            label="Contradictions"
-            value={contradictions === 0 ? 'none detected' : `${contradictions} on the record`}
-            mono={false}
-            tone={contradictions > 0 ? 'text-stamp font-semibold' : undefined}
-          />
           <Reading label="Evidence used" value={String(answer.evidence.length)} />
           <Reading label="Claims" value={String(answer.claims.length)} />
         </div>
@@ -135,8 +128,7 @@ export function Conclusion({ answer }: { answer: InvestigationAnswer }) {
               </p>
               <ul className="mt-1.5 flex flex-col gap-1.5">
                 {answer.claims.map((claim) => {
-                  const exhibits =
-                    claim.supporting_evidence.length + claim.contradicting_evidence.length;
+                  const exhibits = claim.supporting_evidence.length;
                   return (
                     <li key={claim.claim_id} className="flex flex-wrap items-baseline gap-2">
                       <span className="min-w-0 flex-1 text-body text-ink">{claim.text}</span>

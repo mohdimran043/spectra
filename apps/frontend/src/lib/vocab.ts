@@ -66,7 +66,7 @@ export const CLAIM_STATUS_MEANING: Record<ClaimStatus, string> = {
   supported:
     'Carried by its own evidence, and the disproof probe found nothing that overturns it.',
   weak: 'Some support, but not enough independent corroboration to rely on.',
-  contradicted: 'At least one exhibit on the record directly conflicts with this statement.',
+  contradicted: 'The disproof probe turned up an exhibit that conflicts with this statement.',
   refuted: 'The disproof probe found what it was looking for. This statement is ruled out.',
   insufficient: 'Not enough evidence was found either way to judge this statement.',
 };
@@ -86,7 +86,6 @@ export const STANCE_TONE: Record<EvidenceStance, StatusTone> = {
 export const ANSWER_STATUS_LABEL: Record<AnswerStatus, string> = {
   supported: 'Supported',
   partially_supported: 'Partially supported',
-  contested: 'Contested',
   insufficient_evidence: 'Insufficient evidence',
   degraded: 'Degraded',
   failed: 'Failed',
@@ -95,7 +94,6 @@ export const ANSWER_STATUS_LABEL: Record<AnswerStatus, string> = {
 export const ANSWER_STATUS_TONE: Record<AnswerStatus, StatusTone> = {
   supported: 'seal',
   partially_supported: 'caution',
-  contested: 'caution',
   insufficient_evidence: 'stamp',
   degraded: 'caution',
   failed: 'stamp',
@@ -207,7 +205,6 @@ export const AGENT_LABEL: Record<AgentName, string> = {
   disproof_agent: 'Disproof Agent',
   verifier: 'Verifier',
   timeline_builder: 'Timeline Builder',
-  contradiction_radar: 'Contradiction Radar',
 };
 
 export const MODEL_ROLE_PURPOSE: Record<string, string> = {

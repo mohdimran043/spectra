@@ -34,8 +34,8 @@ SUFFICIENCY_WEIGHTS: Mapping[str, float] = {
 TARGET_TOTAL_WEIGHT = 2.0
 TARGET_EVIDENCE_COUNT = 3.0
 TARGET_INDEPENDENT_SOURCES = 2.0
-# Each disconfirming item removes real confidence, but contradictions must never
-# zero a case out on their own - they are explained, not hidden.
+# Each item the disproof probe turned up against the claim removes real
+# confidence, but counter-evidence must never zero a case out on its own.
 CONTRADICTION_PENALTY_PER_ITEM = 0.15
 MAX_CONTRADICTION_PENALTY = 0.45
 

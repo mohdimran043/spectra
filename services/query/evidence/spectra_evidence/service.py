@@ -1,7 +1,7 @@
 """``EvidenceService`` - the single object the agent layer talks to.
 
 It composes the reliability scorer, evidence builder, evidence graph, timeline
-builder, contradiction radar, application resolver and ledger so an agent never
+builder, application resolver and ledger so an agent never
 has to wire six collaborators together (or forget one).
 """
 
@@ -17,7 +17,6 @@ from spectra_schemas import (
     ApplicationLink,
     CanonicalEntity,
     Claim,
-    Contradiction,
     EvidenceItem,
     EvidenceLedger,
     EvidenceStance,
@@ -30,7 +29,6 @@ from spectra_storage.facade import get_storage
 
 from .application_resolver import ApplicationResolver, VerifyCallable
 from .builder import EvidenceBuilder
-from .contradiction import ContradictionRadar
 from .graph import EvidenceGraph
 from .ledger import LedgerService
 from .reliability import ReliabilityScorer
@@ -49,7 +47,6 @@ class EvidenceService:
         scorer: ReliabilityScorer | None = None,
         builder: EvidenceBuilder | None = None,
         timeline: TimelineBuilder | None = None,
-        radar: ContradictionRadar | None = None,
         resolver: ApplicationResolver | None = None,
         ledger: LedgerService | None = None,
         settings: Settings | None = None,
@@ -59,7 +56,6 @@ class EvidenceService:
         self.builder = builder or EvidenceBuilder(self.scorer)
         self.graph = graph
         self.timeline = timeline or TimelineBuilder()
-        self.radar = radar or ContradictionRadar(scorer=self.scorer)
         self.resolver = resolver or ApplicationResolver(settings=self.settings)
         self.ledger = ledger or LedgerService(graph, settings=self.settings)
 
@@ -101,32 +97,6 @@ class EvidenceService:
         items = self.evidence_from_hits(hits, **kwargs)
         ledger = await self.record(investigation_id, items)
         return items, ledger
-
-    # -- contradictions ---------------------------------------------------
-    def contradictions(
-        self, evidence: Sequence[EvidenceItem], entity_ids: Sequence[str] = ()
-    ) -> list[Contradiction]:
-        return self.radar.detect(evidence, entity_ids)
-
-    def resolve_contradictions(
-        self, contradictions: Sequence[Contradiction], evidence: Sequence[EvidenceItem]
-    ) -> list[Contradiction]:
-        by_id = {item.evidence_id: item for item in evidence}
-        return [self.radar.resolve(contradiction, by_id) for contradiction in contradictions]
-
-    async def explain_contradiction(
-        self,
-        contradiction: Contradiction,
-        evidence: Sequence[EvidenceItem],
-        *,
-        use_llm: bool = False,
-    ) -> str:
-        """Explain a contradiction; a model may only rephrase the verdict."""
-        by_id = {item.evidence_id: item for item in evidence}
-        if not use_llm:
-            return self.radar.explain(contradiction, by_id)
-        gateway = await _optional_gateway()
-        return await self.radar.phrase(contradiction, by_id, gateway=gateway)
 
     # -- timeline ---------------------------------------------------------
     def build_timeline(
@@ -173,7 +143,6 @@ class EvidenceService:
             scorer=self.scorer,
             builder=self.builder,
             timeline=self.timeline,
-            radar=self.radar,
             resolver=self.resolver.with_verifier(verify),
             ledger=self.ledger,
             settings=self.settings,
@@ -210,24 +179,12 @@ async def build_evidence_service(
         graph=graph,
         scorer=scorer,
         builder=EvidenceBuilder(scorer),
-        radar=ContradictionRadar(scorer=scorer),
         resolver=ApplicationResolver(settings=resolved, verify=verify),
         ledger=LedgerService(graph, settings=resolved),
         settings=resolved,
     )
     log.info("evidence.service_ready", graph_backend=getattr(storage.graph, "backend_name", "unknown"))
     return service
-
-
-async def _optional_gateway() -> object | None:
-    """The model gateway if it is available - explanation works without it."""
-    try:
-        from spectra_ai_core.gateway import get_gateway
-
-        return await get_gateway()
-    except Exception as exc:
-        log.warning("evidence.gateway_unavailable", error=str(exc))
-        return None
 
 
 __all__ = ["EvidenceService", "build_evidence_service"]

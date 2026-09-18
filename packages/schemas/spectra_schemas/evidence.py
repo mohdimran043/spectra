@@ -1,4 +1,4 @@
-"""Evidence ledger, claims, contradictions, timeline and verification."""
+"""Evidence ledger, claims, timeline and verification."""
 
 from __future__ import annotations
 
@@ -103,23 +103,6 @@ def _asset_of(item: EvidenceItem) -> str:
         if value:
             return str(value)
     return item.evidence_id
-
-
-class Contradiction(BaseModel):
-    """Two pieces of evidence that cannot both be true."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    contradiction_id: str
-    statement: str
-    evidence_a: str
-    evidence_b: str
-    kind: str = "value_conflict"
-    detail: str = ""
-    resolution: str | None = None
-    resolved_in_favour_of: str | None = None
-    severity: float = 0.5
-    entity_id: str | None = None
 
 
 class TimelineEvent(BaseModel):

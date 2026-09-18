@@ -25,7 +25,6 @@ class AutopsyBuilder:
             rejection_reasons=dict(state.evidence.rejection_reasons),
             tool_calls=len(state.tool_history),
             tool_breakdown=breakdown,
-            contradictions=len(state.contradictions),
             total_latency_ms=state.metrics.total_latency_ms,
             stage_latency_ms=dict(state.metrics.stage_latency_ms),
             models_used=list(state.metrics.models_used),

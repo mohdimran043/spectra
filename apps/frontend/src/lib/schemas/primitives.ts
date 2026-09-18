@@ -97,7 +97,6 @@ export type ConfidenceLabel = z.infer<typeof confidenceLabelSchema>;
 export const answerStatusSchema = z.enum([
   'supported',
   'partially_supported',
-  'contested',
   'insufficient_evidence',
   'degraded',
   'failed',
@@ -136,7 +135,6 @@ export const agentNameSchema = z.enum([
   'disproof_agent',
   'verifier',
   'timeline_builder',
-  'contradiction_radar',
 ]);
 export type AgentName = z.infer<typeof agentNameSchema>;
 
@@ -172,7 +170,6 @@ export const queryIntentSchema = z.enum([
   'media_location',
   'investigation',
   'temporal',
-  'contradiction',
   'comparison',
 ]);
 export type QueryIntent = z.infer<typeof queryIntentSchema>;

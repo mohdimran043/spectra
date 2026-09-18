@@ -15,7 +15,6 @@ from typing import Any
 from spectra_config import Settings, get_settings
 from spectra_config.logging import get_logger
 from spectra_schemas import (
-    Contradiction,
     EvidenceItem,
     EvidenceLedger,
     EvidenceStance,
@@ -47,7 +46,7 @@ SYSTEM_PROMPT = (
 )
 
 # The deterministic checks that must all pass before a claim may be asserted.
-MANDATORY_CHECKS = ("entities_present", "independent_sources", "no_unresolved_contradiction", "diversity")
+MANDATORY_CHECKS = ("entities_present", "independent_sources", "no_counter_evidence", "diversity")
 
 
 class Verifier:
@@ -69,7 +68,6 @@ class Verifier:
         ledger: EvidenceLedger,
         ctx: Any | None = None,
         *,
-        contradictions: Sequence[Contradiction] = (),
         allow_llm: bool = True,
     ) -> VerificationResult:
         cited = _cited(claim, ledger)
@@ -86,10 +84,10 @@ class Verifier:
         if not checks["independent_sources"]:
             notes.append(f"{len(sources)} independent source(s), {self._min_sources} required")
 
-        touching = _touching(contradictions, cited)
-        checks["no_unresolved_contradiction"] = not touching
-        if touching:
-            notes.append(f"{len(touching)} unresolved contradiction(s) touch this claim")
+        against = [i for i in cited if i.stance is EvidenceStance.CONTRADICTING]
+        checks["no_counter_evidence"] = not against
+        if against:
+            notes.append(f"{len(against)} cited item(s) count against this claim")
 
         diversity = _diversity(cited)
         checks["diversity"] = diversity >= MIN_DIVERSITY
@@ -160,15 +158,6 @@ def _missing_entities(claim: str, cited: Sequence[EvidenceItem]) -> list[str]:
         return []
     haystack = " ".join(f"{i.summary} {i.excerpt} {' '.join(i.entities)}" for i in cited).lower()
     return [name for name in sorted(named) if name.lower() not in haystack]
-
-
-def _touching(contradictions: Sequence[Contradiction], cited: Sequence[EvidenceItem]) -> list[Contradiction]:
-    ids = {item.evidence_id for item in cited}
-    return [
-        c
-        for c in contradictions
-        if c.resolution is None and (c.evidence_a in ids or c.evidence_b in ids)
-    ]
 
 
 def _diversity(cited: Sequence[EvidenceItem]) -> float:

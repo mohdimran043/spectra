@@ -39,7 +39,6 @@ def result_from_state(question: BenchmarkQuestion, state: Any, service: Any) -> 
         targets=_targets(answer.evidence),
         entities=_entities(answer.entities),
         evidence_labels=[str(item.get("label", "")) for item in answer.evidence],
-        contradictions=len(answer.contradictions),
         claims=len(answer.claims),
         latency_ms=answer.metrics.total_latency_ms,
         tool_calls=answer.metrics.tool_calls,

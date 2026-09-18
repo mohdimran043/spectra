@@ -1,6 +1,6 @@
 """Reading the investigation's own evidence ledger from inside a tool.
 
-The Brain, the contradiction radar and the timeline builder all re-read evidence
+The Brain and the timeline builder both re-read evidence
 that earlier tool calls already gathered, and they all want the same thing: the
 heaviest items, optionally narrowed to a set of ids.
 """

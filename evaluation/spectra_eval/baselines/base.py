@@ -28,7 +28,6 @@ class BaselineResult:
     targets: list[Target] = field(default_factory=list)
     entities: list[str] = field(default_factory=list)
     evidence_labels: list[str] = field(default_factory=list)
-    contradictions: int = 0
     claims: int = 0
     latency_ms: float = 0.0
     tool_calls: int = 0

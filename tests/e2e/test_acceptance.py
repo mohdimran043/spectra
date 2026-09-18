@@ -99,8 +99,15 @@ class TestScenarioThreeStructuredAggregation:
         assert state.trace, "even fast mode leaves a trace"
 
 
-class TestScenarioFourContradiction:
-    """Spec §76: sources disagree; the system must surface and explain the conflict."""
+class TestScenarioFourDisagreeingSources:
+    """Spec §76, as it stands without the Contradiction Radar.
+
+    Nothing compares evidence pairs any more, so no "contradiction" object is
+    produced.  The honesty requirement survives the removal: when the corpus
+    holds two memos that disagree, the system may not assert one side as
+    settled.  It must hedge, abstain, or carry the counter-evidence the disproof
+    probe found on the claim itself.
+    """
 
     async def test_both_memo_versions_are_retrievable(self, live_container, analyst):
         response = await live_container.search.search(
@@ -113,21 +120,36 @@ class TestScenarioFourContradiction:
             "the conflicting approval memos must be retrievable"
         )
 
-    async def test_contradictory_evidence_is_reported_not_hidden(self, live_container, analyst):
+    async def test_a_disagreement_is_never_asserted_as_settled(self, live_container, analyst):
         state = await live_container.investigations.investigate(
             f"The sources disagree about whether incident {INCIDENT} was approved. Investigate.",
             mode=SearchMode.DEEP,
             ctx=analyst,
         )
         answer = _answer(live_container, state)
-        # Either a contradiction is reported, or the answer is honest about the
-        # disagreement - what is forbidden is silently picking one side.
-        mentions_conflict = any(
-            word in answer.answer.lower() for word in ("disagree", "contradict", "conflict", "however")
+        hedged = any(
+            word in answer.answer.lower()
+            for word in ("disagree", "contradict", "conflict", "however", "weakly supported")
         )
-        assert answer.contradictions or mentions_conflict or answer.status.value in (
-            "insufficient_evidence", "contested", "degraded"
-        ), "a disagreement must be surfaced, not silently resolved"
+        probe_found_counter_evidence = any(c.contradicting_evidence for c in answer.claims)
+        honest_status = answer.status.value in (
+            "insufficient_evidence", "partially_supported", "degraded"
+        )
+        assert hedged or probe_found_counter_evidence or honest_status, (
+            "a disagreement must be hedged, probed or abstained on - never silently resolved"
+        )
+
+    async def test_the_retired_radar_produces_nothing(self, live_container, analyst):
+        """The capability is gone, so no run may report one."""
+        state = await live_container.investigations.investigate(
+            f"The sources disagree about whether incident {INCIDENT} was approved. Investigate.",
+            mode=SearchMode.DEEP,
+            ctx=analyst,
+        )
+        answer = _answer(live_container, state)
+        assert not hasattr(answer, "contradictions")
+        assert not hasattr(answer.metrics, "contradictions")
+        assert all(step.agent.value != "contradiction_radar" for step in state.trace)
 
 
 class TestScenarioFiveGracefulDegradation:

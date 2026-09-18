@@ -21,7 +21,7 @@ from ...tools.base import Tool
 from ...tools.modality_search import ModalitySearchTool
 from ...tools.payloads import evidence_payload
 from ...tools.schemas import EVIDENCE_OUTPUT, SEARCH_INPUT, integer, obj, string
-from ...tools.timeouts import LOCATOR_TIMEOUT_SECONDS, SEARCH_TEXT_TIMEOUT_SECONDS
+from ...tools.timeouts import LOCATOR_TIMEOUT_SECONDS, SEARCH_TIMEOUT_SECONDS
 
 DEFAULT_PAGE = 1
 MAX_PAGE = 10000
@@ -38,7 +38,7 @@ class SearchDocumentsTool(ModalitySearchTool):
         agent=AgentName.DOCUMENT,
         input_schema=SEARCH_INPUT,
         output_schema=EVIDENCE_OUTPUT,
-        timeout_seconds=SEARCH_TEXT_TIMEOUT_SECONDS,
+        timeout_seconds=SEARCH_TIMEOUT_SECONDS,
         requires_flag="document",
         cost_hint=1.0,
     )

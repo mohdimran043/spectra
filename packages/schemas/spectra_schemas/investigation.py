@@ -21,7 +21,6 @@ from .enums import (
 from .evidence import (
     ApplicationLink,
     Claim,
-    Contradiction,
     EvidenceLedger,
     TimelineEvent,
     VerificationResult,
@@ -125,7 +124,6 @@ class InvestigationMetrics(BaseModel):
     candidates_retrieved: int = 0
     evidence_used: int = 0
     evidence_rejected: int = 0
-    contradictions: int = 0
     claims_made: int = 0
     claims_refuted: int = 0
     model_latency_ms: dict[str, float] = Field(default_factory=dict)
@@ -150,7 +148,6 @@ class InvestigationState(BaseModel):
     plan: list[str] = Field(default_factory=list)
     entities: list[str] = Field(default_factory=list)
     evidence: EvidenceLedger = Field(default_factory=EvidenceLedger)
-    contradictions: list[Contradiction] = Field(default_factory=list)
     timeline: list[TimelineEvent] = Field(default_factory=list)
     verification: VerificationResult | None = None
     tool_history: list[ToolInvocation] = Field(default_factory=list)
@@ -203,7 +200,6 @@ class SearchAutopsy(BaseModel):
     rejection_reasons: dict[str, int] = Field(default_factory=dict)
     tool_calls: int = 0
     tool_breakdown: dict[str, int] = Field(default_factory=dict)
-    contradictions: int = 0
     total_latency_ms: float = 0.0
     stage_latency_ms: dict[str, float] = Field(default_factory=dict)
     models_used: list[str] = Field(default_factory=list)
@@ -231,7 +227,6 @@ class InvestigationAnswer(BaseModel):
     status: AnswerStatus
     entities: list[dict[str, Any]] = Field(default_factory=list)
     evidence: list[dict[str, Any]] = Field(default_factory=list)
-    contradictions: list[Contradiction] = Field(default_factory=list)
     timeline: list[TimelineEvent] = Field(default_factory=list)
     claims: list[Claim] = Field(default_factory=list)
     application_links: list[ApplicationLink] = Field(default_factory=list)
@@ -257,6 +252,5 @@ class InvestigationCase(BaseModel):
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
     evidence_count: int = 0
-    contradiction_count: int = 0
     claim_count: int = 0
     confidence: float = 0.0

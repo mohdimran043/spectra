@@ -121,7 +121,6 @@ class ConfidenceLabel(str, Enum):
 class AnswerStatus(str, Enum):
     SUPPORTED = "supported"
     PARTIALLY_SUPPORTED = "partially_supported"
-    CONTESTED = "contested"
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
     DEGRADED = "degraded"
     FAILED = "failed"
@@ -147,7 +146,6 @@ class QueryIntent(str, Enum):
     MEDIA_LOCATION = "media_location"
     INVESTIGATION = "investigation"
     TEMPORAL = "temporal"
-    CONTRADICTION = "contradiction"
     COMPARISON = "comparison"
 
 
@@ -173,7 +171,6 @@ class AgentName(str, Enum):
     DISPROOF = "disproof_agent"
     VERIFIER = "verifier"
     TIMELINE = "timeline_builder"
-    CONTRADICTION = "contradiction_radar"
 
 
 class ModelRole(str, Enum):

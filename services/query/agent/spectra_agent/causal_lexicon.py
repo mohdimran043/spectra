@@ -4,7 +4,7 @@ One shared table, read in both directions.  The claim builder reads it forwards
 - a cause may only appear in a claim when its terms actually occur in the
 retrieved evidence - and the disproof agent reads it backwards, turning a cause
 into the competing outcomes that would show the claim is wrong.  The stance
-classifier, the verifier and the contradiction radar read the same table, so the
+classifier and the verifier read the same table, so the
 whole system argues in one language.
 
 It lives at the package root because no single agent owns it.
@@ -210,6 +210,60 @@ def negate(text: str) -> list[str]:
             if candidate != lowered and candidate not in variants:
                 variants.append(candidate)
     return variants
+
+
+#: Words that flip the outcome term after them. "could not be authorised"
+#: asserts the opposite of "authorised", so reading the bare word as a competing
+#: outcome turns a corroborating exhibit into a conflicting one.
+NEGATION_CUES: frozenset[str] = frozenset(
+    {
+        "not", "never", "no", "nor", "none", "without", "cannot", "cant",
+        "couldnt", "didnt", "doesnt", "wasnt", "werent", "isnt", "arent",
+        "wont", "unable",
+    }
+)
+
+#: Verbs that negate only in the infinitive - "failed to authorise" denies the
+#: authorisation, but "declined for insufficient funds" asserts the funds. They
+#: are outcome words in their own right, so they may not negate on sight.
+NEGATING_VERBS: frozenset[str] = frozenset(
+    {"failed", "fails", "failing", "refused", "refuses", "declined", "denied", "unable"}
+)
+
+#: How far back a negation reaches. "the payment could not be authorised" needs
+#: three words; beyond a short span the cue governs a different clause.
+NEGATION_WINDOW_WORDS = 4
+
+_WORDS = re.compile(r"[a-z0-9]+")
+
+
+def _negated(window: Sequence[str]) -> bool:
+    """True when the words immediately before a match deny it."""
+    for index, word in enumerate(window):
+        if word in NEGATION_CUES:
+            return True
+        if word in NEGATING_VERBS and index + 1 < len(window) and window[index + 1] == "to":
+            return True
+    return False
+
+
+def asserted(phrase: str, text: str) -> bool:
+    """True when ``text`` states ``phrase`` rather than denying it.
+
+    Two conditions, both learned from false conflicts. The match must be on
+    whole words, because "authorised" inside "unauthorised" is the opposite of a
+    hit. And it must not sit behind a negation, because "could not be
+    authorised" asserts that the payment was *declined* - the very thing a claim
+    about a failed authorisation says.
+    """
+    if not phrase:
+        return False
+    pattern = rf"(?<![a-z0-9]){re.escape(phrase.lower())}(?![a-z0-9])"
+    for match in re.finditer(pattern, text.lower()):
+        preceding = _WORDS.findall(text.lower()[: match.start()])
+        if not _negated(preceding[-NEGATION_WINDOW_WORDS:]):
+            return True
+    return False
 
 
 def competing_outcomes(text: str) -> list[str]:

@@ -13,7 +13,7 @@ from spectra_schemas import EvidenceItem, EvidenceStance
 # Stance belongs to no single agent - the Brain stances its supporting evidence,
 # the Disproof Agent stances what it finds and the Verifier reads the result -
 # so it stays a package-root primitive beside the lexicon it reads.
-from .causal_lexicon import competing_outcomes, negate, salient_terms
+from .causal_lexicon import asserted, competing_outcomes, negate, salient_terms
 
 # An item must share at least one salient term with the claim before its stance
 # means anything; otherwise it is simply about something else.
@@ -37,8 +37,11 @@ def classify(claim: str, item: EvidenceItem) -> EvidenceStance:
     if len(overlap) < MIN_SUBJECT_OVERLAP:
         return EvidenceStance.NEUTRAL
 
-    counters = set(competing_outcomes(claim)) | {phrase for phrase in negate(claim)}
-    if any(counter in text for counter in counters if counter):
+    # A competing outcome only conflicts when the evidence actually asserts it.
+    # Substring matching read "could not be authorised" as "authorised" and
+    # filed a corroborating exhibit as a conflict.
+    counters = set(competing_outcomes(claim)) | set(negate(claim))
+    if any(asserted(counter, text) for counter in counters):
         return EvidenceStance.CONTRADICTING
     if len(overlap) >= max(2, int(len(claim_terms) * SUPPORT_TERM_RATIO)):
         return EvidenceStance.SUPPORTING

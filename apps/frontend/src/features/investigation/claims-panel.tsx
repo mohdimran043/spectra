@@ -65,7 +65,7 @@ export function ClaimsPanel({
       ) : claims.length === 0 ? (
         <EmptyState
           title="No claims stated yet"
-          body="SPECTRA states a claim only once it has evidence for it and has searched for the evidence that would break it. Each claim appears here with its own confidence, its supporting and contradicting exhibits, and the disproof probe that was run against it."
+          body="SPECTRA states a claim only once it has evidence for it and has searched for the evidence that would break it. Each claim appears here with its own confidence, the exhibits supporting it, and the disproof probe that was run against it."
         />
       ) : (
         <ul className="min-h-0 flex-1 overflow-y-auto">

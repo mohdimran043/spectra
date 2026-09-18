@@ -1,4 +1,4 @@
-"""Deterministic text helpers shared by the builder, timeline and radar.
+"""Deterministic text helpers shared by the builder and the timeline.
 
 Everything here is *extractive*: it selects spans that already exist in the
 source text.  No sentence is ever generated, so an evidence summary can always

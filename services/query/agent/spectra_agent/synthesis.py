@@ -13,6 +13,7 @@ before it runs, and it reads the leading one rather than inventing its own.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from typing import Any
 
@@ -49,8 +50,24 @@ ANSWER_SCHEMA: dict[str, Any] = {
 SYSTEM_PROMPT = (
     "You write the answer to an enterprise investigation using ONLY the numbered evidence "
     "excerpts supplied. Every sentence must end with the citation(s) it comes from, like [E1] "
-    "or [E2][E3]. Never state anything the excerpts do not state. Reply with JSON only."
+    "or [E2][E3], BEFORE its full stop. Do not collect the citations into a list at the end of "
+    "the answer: a sentence with no citation of its own is discarded. Example: "
+    "\"The authorisation call timed out [E1][E2]. No fraud rule fired [E5].\" "
+    "Never state anything the excerpts do not state. Reply with JSON only."
 )
+
+#: Everything a citation marker is made of, so what is left can be inspected
+#: for an actual assertion.
+_CITATION_MARKUP = re.compile(r"\[E\d+\]|[\s,;.)(]")
+
+
+def carries_prose(text: str) -> bool:
+    """True when ``text`` asserts something, rather than only citing.
+
+    An answer reduced to its citation markers by the grounding check says
+    nothing, and publishing it would present punctuation as a finding.
+    """
+    return bool(_CITATION_MARKUP.sub("", text).strip())
 
 # How many evidence items are offered to the answer; more than this and the
 # citations stop being checkable by a human reader.
@@ -137,7 +154,14 @@ class AnswerSynthesiser:
             log.info("synthesis.extractive_fallback", reason=outcome.reason)
             return ""
         raw = str(outcome.data.get("answer") or "").strip()
-        return _drop_unsupported(raw, labels)
+        grounded = _drop_unsupported(raw, labels)
+        if not carries_prose(grounded):
+            # Every sentence failed the citation check. Publishing what survives
+            # would be a row of markers, so the extractive path - grounded by
+            # construction - writes the answer instead.
+            log.info("synthesis.generated_answer_lost_its_prose", investigation_id=state.investigation_id)
+            return ""
+        return grounded
 
     # -- extractive -------------------------------------------------------
     def _extractive(
@@ -154,12 +178,6 @@ class AnswerSynthesiser:
             if len(answer) >= ANSWER_MAX_SENTENCES:
                 break
             answer.add(_statement(item), f" {index_of[item.evidence_id]}.")
-        for contradiction in state.contradictions[:1]:
-            pair = "".join(
-                index_of[e] for e in (contradiction.evidence_a, contradiction.evidence_b) if e in index_of
-            )
-            if pair:
-                answer.add(f"Sources disagree: {contradiction.statement.rstrip('.')}", f" {pair}.")
         return _drop_unsupported(answer.text(), labels)
 
 
@@ -185,9 +203,9 @@ class _Answer:
 
 
 def _qualifier(leader: Claim) -> str:
-    """Never state a contested or weak claim as if it were settled."""
+    """Never state a weakly-backed claim as if it were settled."""
     if leader.contradicting_evidence:
-        return " (contested by conflicting evidence)"
+        return " (the disproof probe found evidence against this)"
     if leader.status is not ClaimStatus.SUPPORTED:
         return " (weakly supported)"
     return ""

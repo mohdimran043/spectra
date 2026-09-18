@@ -11,11 +11,50 @@ and the `APP_VERSION` environment variable. Bump it with
 
 ## [Unreleased]
 
+### Removed
+
+- **The Contradiction Radar, in full.** Nothing compares evidence pairs any more. Deleted: the
+  `contradiction` agent package and its `detect_contradictions` tool, the `ContradictionRadar`
+  detector in the evidence layer, the `Contradiction` model, `AnswerStatus.CONTESTED`,
+  `AgentName.CONTRADICTION`, `QueryIntent.CONTRADICTION`, the `contradiction_prf` evaluation
+  metric, the `contradiction_count` column on `investigation_cases`, and the
+  `ContradictionRadar` panel in the console.
+- `contradictions` is gone from `InvestigationState`, `InvestigationMetrics`, `SearchAutopsy`,
+  `InvestigationAnswer` and `InvestigationCase`, and from the case-report Markdown.
+
+### Changed
+
+- The investigation loop is now **plan → retrieve → observe → replan → disproof → verify →
+  synthesise**. The contradiction sweep that used to sit between disproof and verification is gone.
+- The Verifier still runs four mandatory checks, but the third is now **`no_counter_evidence`**
+  (was `no_unresolved_contradiction`). It asks the evidence directly — did the disproof probe turn
+  up anything among the cited items? — instead of consulting the radar.
+- Questions phrased as "the sources disagree about X" now classify as `QueryIntent.INVESTIGATION`
+  and run the full loop, rather than routing to a detector that no longer exists.
+- `Claim.contradicting_evidence` survives, but the disproof probe is now its only producer. The
+  console labels it "found against it by the disproof probe" rather than "contradicting", and the
+  claim card shows supporting exhibits first.
+- The benchmark category `contradiction_detection` is renamed **`conflicting_sources`**. The corpus
+  still plants two disagreeing approval memos; what is measured is now that SPECTRA refuses to
+  assert either side as settled, not that it emits a contradiction object.
+- The guided demo's "Contradiction Radar" scenario is replaced by **"Knowing When To Stop"**, which
+  demonstrates abstention against a question the corpus cannot answer.
+- Investigations persisted before this change are upgraded on read: `contradictions`, the
+  `contradictions` metric and `contradiction_radar` trace steps are dropped, and a stored
+  `contested` answer status is re-read as `partially_supported`.
+
+### Fixed
+
+- `investigation_cases` was never rebuilt after the hypothesis→claim refactor and still carried a
+  `hypothesis_count` column with no `claim_count`. The table was empty, so no data was lost, but
+  any write to it would have failed. It is now dropped and recreated from the current model.
+
 ### Added
 
 - **Claims.** The `claim_builder` agent derives claims directly from the evidence an investigation
   retrieved, grounded to its focal entity, and judges each one **on its own evidence alone**:
-  supporting weight, independent-source count and evidence diversity, minus a contradiction penalty.
+  supporting weight, independent-source count and evidence diversity, minus a penalty for whatever
+  the disproof probe found against it.
   There is no competition between claims and no normalisation across them, so a well-supported
   conclusion keeps a high confidence.
 - `Claim` and `ClaimStatus` (`supported` · `weak` · `contradicted` · `refuted` · `insufficient`;

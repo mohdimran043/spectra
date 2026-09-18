@@ -30,8 +30,8 @@ AGENT_PROFILES: dict[str, tuple[str, str | None, str | None]] = {
 }
 
 FALLBACK_ALTERNATIVES: dict[str, tuple[str, ...]] = {
-    "claim": ("search_supporting_evidence", "detect_contradictions"),
-    "verifier": ("detect_contradictions", "search_supporting_evidence"),
+    "claim": ("search_supporting_evidence", "search_disconfirming_evidence"),
+    "verifier": ("search_supporting_evidence", "search_disconfirming_evidence"),
     "graph": ("search_entities", "search_documents"),
 }
 

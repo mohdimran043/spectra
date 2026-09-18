@@ -25,15 +25,10 @@ class Run:
         self.state = state
         self.ctx = ctx
         self._engine = engine
-        # Evidence count at the last contradiction sweep, so the sweep is not
-        # repeated while nothing has changed.
-        self.contradictions_checked_at = -1
 
     async def batch(self, calls: Sequence[PlannedCall]) -> list[ToolResult]:
         outcome = await self._engine.run(self.state, calls, self.ctx)
         self.state = outcome.state
-        if any(result.tool == "detect_contradictions" for result in outcome.results):
-            self.contradictions_checked_at = len(self.state.evidence.items)
         return outcome.results
 
     async def call(self, tool: str, args: dict[str, Any]) -> ToolResult:

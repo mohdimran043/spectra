@@ -192,15 +192,6 @@ def replan(state: InvestigationState, available: Collection[str]) -> list[Planne
             )
         )
 
-    if len(state.evidence.items) >= 2 and not state.contradictions:
-        calls.append(
-            PlannedCall(
-                "detect_contradictions",
-                {},
-                "gathered evidence has not yet been checked for conflicts",
-            )
-        )
-
     if understanding.temporal_hint and not state.timeline:
         calls.append(
             PlannedCall("build_timeline", {}, "the question is about sequence, so evidence is ordered in time")

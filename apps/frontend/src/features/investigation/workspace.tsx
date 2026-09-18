@@ -12,7 +12,6 @@ import { GraphExplorer } from '@/features/graph/graph-explorer';
 import { BrainStatus } from './brain-status';
 import { ClaimsPanel } from './claims-panel';
 import { Conclusion } from './conclusion';
-import { ContradictionRadar } from './contradiction-radar';
 import { EvidenceLedger } from './evidence-ledger';
 import { QuestionHeader } from './question-header';
 import { TimelinePanel } from './timeline-panel';
@@ -89,13 +88,6 @@ export function InvestigationWorkspace({ investigationId }: { investigationId: s
         )}
 
         {answer?.degraded && <DegradedBand reasons={answer.degraded_reasons} />}
-
-        {answer && (
-          <ContradictionRadar
-            contradictions={answer.contradictions}
-            onOpenEvidence={(evidenceId) => explorer.openEvidenceId(evidenceId)}
-          />
-        )}
 
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] xl:items-start">
           <ClaimsPanel

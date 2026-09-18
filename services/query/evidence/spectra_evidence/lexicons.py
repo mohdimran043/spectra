@@ -1,4 +1,4 @@
-"""Configurable lexicons used by extractive summarisation and contradiction detection.
+"""Configurable lexicons used by extractive summarisation and stance classification.
 
 These are *data*, not logic: an operator can extend them without touching code,
 and every consumer takes the lexicon as a parameter so a deployment can supply
@@ -40,7 +40,7 @@ EXCLUSIVE_ATTRIBUTES: frozenset[str] = frozenset({"status", "outcome", "lifecycl
 
 # Values that describe the SAME situation in different words.  Two sources are
 # not contradicting each other when one says a service "timed out" and another
-# says it was "unavailable" - a radar that cries wolf on synonyms gets ignored.
+# says it was "unavailable" - a classifier that cries wolf on synonyms gets ignored.
 COMPATIBLE_VALUES: Mapping[str, tuple[frozenset[str], ...]] = {
     "outcome": (frozenset({"timed_out", "unavailable", "degraded"}),),
     "status": (frozenset({"failed", "cancelled"}),),

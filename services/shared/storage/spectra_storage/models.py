@@ -214,7 +214,6 @@ class InvestigationCaseRow(Base):
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
     evidence_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    contradiction_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     claim_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 

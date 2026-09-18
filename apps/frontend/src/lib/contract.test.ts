@@ -47,7 +47,6 @@ const ANSWER_FIELDS = [
   'status',
   'entities',
   'evidence',
-  'contradictions',
   'timeline',
   'claims',
   'application_links',
@@ -156,11 +155,14 @@ describe('API contract', () => {
     expect(parsed.claims).toHaveLength(2);
   });
 
-  it('surfaces contradictions with their resolution rather than hiding them', () => {
-    const parsed = investigationAnswerSchema.parse(investigationAnswer);
-    expect(parsed.contradictions).toHaveLength(1);
-    expect(parsed.contradictions[0]?.resolution).toBeTruthy();
-    expect(parsed.contradictions[0]?.detail).toBeTruthy();
+  it('drops the retired contradiction radar rather than rendering it', () => {
+    const parsed = investigationAnswerSchema.parse({
+      ...investigationAnswer,
+      contradictions: [{ contradiction_id: 'con_1', statement: 'a retired capability' }],
+    });
+    expect(parsed).not.toHaveProperty('contradictions');
+    expect(parsed.metrics).not.toHaveProperty('contradictions');
+    expect(parsed.autopsy).not.toHaveProperty('contradictions');
   });
 
   it('carries the autopsy counts the forensics screen renders', () => {

@@ -9,7 +9,7 @@ architectural claim can be measured and ablated against the same corpus.
 2. evidence-centric investigation
 3. evidence-grounded claim construction
 4. disconfirming-evidence search
-5. contradiction-aware reasoning
+5. evidence-based claim status assessment
 6. temporal evidence reasoning
 7. adaptive retrieval budgets
 8. evidence sufficiency and abstention
@@ -39,7 +39,7 @@ Three or more questions each, all with ground truth in `demo-data/expected/`:
 single-source retrieval · cross-document retrieval · image retrieval · video retrieval
 audio retrieval · database reasoning · image→DB · DB→video · video→document
 entity resolution · multi-hop investigation · temporal reasoning
-contradiction detection · claim verification · evidence sufficiency · abstention
+conflicting sources · claim verification · evidence sufficiency · abstention
 ```
 
 The abstention category matters most and is the easiest to omit: questions whose *correct* answer is
@@ -54,10 +54,10 @@ The abstention category matters most and is the easiest to omit: questions whose
 **Evidence** — completeness (fraction of expected targets actually cited), claim support (fraction of
 answer claims with a valid citation), evidence diversity.
 
-**Reasoning** — contradiction-detection precision/recall, investigation success (conclusion match +
-status match), and leading-claim accuracy: whether the highest-confidence claim is the one the
-ground truth names. Because claims are scored independently rather than against each other, this
-measures whether the evidence backing is right, not whether the ranking arithmetic is.
+**Reasoning** — investigation success (conclusion match + status match), and leading-claim accuracy:
+whether the highest-confidence claim is the one the ground truth names. Because claims are scored
+independently rather than against each other, this measures whether the evidence backing is right,
+not whether the ranking arithmetic is.
 
 **Calibration** — abstention correctness, split into *correctly abstained*, *wrongly abstained* and
 *wrongly answered*. The last is the dangerous one.
@@ -105,7 +105,7 @@ Runs recorded before 2026-09-18 were CPU/extractive and are not comparable on th
 The distinction still matters for anyone running the harness elsewhere, so it stays labelled:
 
 - **No generative runtime** — synthesis is extractive and every answer is flagged degraded.
-  Retrieval, entity-resolution, contradiction and abstention metrics remain meaningful, because those
+  Retrieval, entity-resolution, and abstention metrics remain meaningful, because those
   paths do not depend on generation. Investigation-success and claim-support are **not** comparable to
   a GPU run, and the report labels them accordingly.
 - **GPU present** — all sixteen categories are comparable across the five baselines.

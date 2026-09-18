@@ -207,7 +207,7 @@ class TestDemoScenarios:
         assert len(scenarios) == 6
         ids = {s["id"] for s in scenarios}
         assert {"image-to-database", "text-to-video", "database-to-documents",
-                "investigation", "contradiction", "timeline"} == ids
+                "investigation", "abstention", "timeline"} == ids
 
     def test_each_scenario_has_a_narrative_and_a_question(self, client):
         for scenario in client.get("/api/demo/scenarios").json():

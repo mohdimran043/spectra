@@ -2,7 +2,7 @@
 
 These are the questions a retrieval-only baseline is expected to lose on:
 resolving surface forms, chaining hops, ordering events, settling a
-contradiction, testing a candidate explanation to destruction, judging sufficiency and
+conflicting sources, testing a candidate explanation to destruction, judging sufficiency and
 knowing when to abstain.
 """
 
@@ -27,8 +27,8 @@ from .world import World
 MODE_FAST: Final[str] = "fast"
 MODE_DEEP: Final[str] = "deep"
 STATUS_SUPPORTED: Final[str] = "supported"
-STATUS_CONTESTED: Final[str] = "contested"
 STATUS_INSUFFICIENT: Final[str] = "insufficient_evidence"
+STATUS_PARTIAL: Final[str] = "partially_supported"
 
 
 def entity_resolution(world: World, index: CorpusIndex) -> tuple[ExpectedQuestion, ...]:
@@ -212,17 +212,17 @@ def temporal(world: World, index: CorpusIndex) -> tuple[ExpectedQuestion, ...]:
     )
 
 
-def contradiction(world: World, index: CorpusIndex) -> tuple[ExpectedQuestion, ...]:
+def conflicting_sources(world: World, index: CorpusIndex) -> tuple[ExpectedQuestion, ...]:
     memo_v1 = index.document(f"approval-memo-{world.incident_id.lower()}-v1")
     memo_v2 = index.document(f"approval-memo-{world.incident_id.lower()}-v2")
     fraud = index.document("fraud-rule-review-")
     report = index.document("incident-report-")
     return (
         ExpectedQuestion(
-            id="contradiction_memos_disagree",
+            id="conflicting_memos_disagree",
             question=f"Do the approval memos for {world.incident_id} agree about whether the emergency "
                      "change was approved?",
-            category="contradiction_detection",
+            category="conflicting_sources",
             mode=MODE_DEEP,
             expected_entities=(world.incident_id,),
             expected_targets=(
@@ -231,14 +231,14 @@ def contradiction(world: World, index: CorpusIndex) -> tuple[ExpectedQuestion, .
             ),
             expected_conclusion="No - revision 1 says the board had not approved it, revision 2 says it "
                                 "was approved.",
-            expected_status=STATUS_CONTESTED,
-            notes="Detection only; the planted contradiction.",
+            expected_status=STATUS_PARTIAL,
+            notes="Both memo revisions must reach the ledger; neither may be asserted as settled.",
         ),
         ExpectedQuestion(
-            id="contradiction_resolved_by_version",
+            id="conflicting_resolved_by_version",
             question=f"The sources disagree about whether {world.incident_id} was approved. Which is "
                      "correct and why?",
-            category="contradiction_detection",
+            category="conflicting_sources",
             mode=MODE_DEEP,
             expected_entities=(world.incident_id,),
             expected_targets=(
@@ -252,9 +252,9 @@ def contradiction(world: World, index: CorpusIndex) -> tuple[ExpectedQuestion, .
             notes="The spec's fourth end-to-end test: version and source reliability resolve it.",
         ),
         ExpectedQuestion(
-            id="contradiction_fraud_claim",
+            id="conflicting_fraud_claim",
             question=f"Does any source claim the fraud rule caused {world.transaction_id} to fail?",
-            category="contradiction_detection",
+            category="conflicting_sources",
             mode=MODE_DEEP,
             expected_entities=(world.transaction_id, world.fraud_incident_id),
             expected_targets=(

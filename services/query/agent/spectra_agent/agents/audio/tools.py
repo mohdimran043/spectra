@@ -7,7 +7,7 @@ from spectra_schemas import AgentName, Modality, ToolSpec
 from ...tools.base import Tool
 from ...tools.modality_search import ModalitySearchTool
 from ...tools.schemas import EVIDENCE_OUTPUT, SEARCH_INPUT
-from ...tools.timeouts import SEARCH_TEXT_TIMEOUT_SECONDS
+from ...tools.timeouts import SEARCH_TIMEOUT_SECONDS
 
 
 class SearchAudioTool(ModalitySearchTool):
@@ -21,7 +21,7 @@ class SearchAudioTool(ModalitySearchTool):
         agent=AgentName.AUDIO,
         input_schema=SEARCH_INPUT,
         output_schema=EVIDENCE_OUTPUT,
-        timeout_seconds=SEARCH_TEXT_TIMEOUT_SECONDS,
+        timeout_seconds=SEARCH_TIMEOUT_SECONDS,
         requires_flag="audio",
         cost_hint=1.5,
     )

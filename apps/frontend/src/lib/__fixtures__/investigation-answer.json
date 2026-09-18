@@ -14,7 +14,6 @@
     "candidates_retrieved": 184,
     "claims_made": 2,
     "claims_refuted": 0,
-    "contradictions": 1,
     "degraded": false,
     "degraded_reasons": [],
     "evidence_diversity": 0.95,
@@ -60,7 +59,7 @@
         "evd_2"
       ],
       "text": "The authentication service timed out, so TX82931 failed.",
-      "verification_note": "Two independent sources; no unresolved contradiction.",
+      "verification_note": "Two independent sources; no counter-evidence found.",
       "verified": true
     },
     {
@@ -81,20 +80,6 @@
   ],
   "confidence": 0.94,
   "confidence_label": "high",
-  "contradictions": [
-    {
-      "contradiction_id": "con_1",
-      "detail": "The superseded draft says rejected; the approved v2 says approved.",
-      "entity_id": "ent_incident_1",
-      "evidence_a": "evd_2",
-      "evidence_b": "evd_3",
-      "kind": "value_conflict",
-      "resolution": "Resolved in favour of evd_2: approved beats superseded.",
-      "resolved_in_favour_of": "evd_2",
-      "severity": 0.7,
-      "statement": "INC1829 status is reported as both 'approved' and 'rejected'"
-    }
-  ],
   "degraded": false,
   "degraded_reasons": [],
   "entities": [
@@ -146,7 +131,7 @@
       "relevance": 0.91,
       "reliability": 0.75,
       "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
-      "retrieved_at": "2026-09-18T09:42:05.269627Z",
+      "retrieved_at": "2026-09-18T10:40:41.456803Z",
       "retrieved_by": "search_documents",
       "stance": "supporting",
       "summary": "The authentication service connection pool was exhausted at 10:42.",
@@ -190,7 +175,7 @@
       "relevance": 0.91,
       "reliability": 0.75,
       "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
-      "retrieved_at": "2026-09-18T09:42:05.269639Z",
+      "retrieved_at": "2026-09-18T10:40:41.456815Z",
       "retrieved_by": "search_documents",
       "stance": "supporting",
       "summary": "The authentication service connection pool was exhausted at 10:42.",
@@ -234,7 +219,7 @@
       "relevance": 0.91,
       "reliability": 0.75,
       "reliability_reason": "Document, approved version, names TX82931 explicitly, corroborated by 2 sources",
-      "retrieved_at": "2026-09-18T09:42:05.269649Z",
+      "retrieved_at": "2026-09-18T10:40:41.456825Z",
       "retrieved_by": "search_documents",
       "stance": "neutral",
       "summary": "The authentication service connection pool was exhausted at 10:42.",
@@ -264,7 +249,6 @@
     "candidates_retrieved": 184,
     "claims_made": 2,
     "claims_refuted": 0,
-    "contradictions": 1,
     "evidence_rejected": 29,
     "evidence_used": 3,
     "gpu_peak_mb": null,

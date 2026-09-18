@@ -117,11 +117,6 @@ export function AutopsyDivision({ investigationId }: { investigationId: string }
                 value={String(autopsy.evidence_rejected)}
                 tone={autopsy.evidence_rejected > 0 ? 'text-caution' : undefined}
               />
-              <Reading
-                label="Contradictions"
-                value={String(autopsy.contradictions)}
-                tone={autopsy.contradictions > 0 ? 'text-stamp font-semibold' : undefined}
-              />
               <Reading label="Claims made" value={String(autopsy.claims_made)} />
               <Reading
                 label="Claims refuted"

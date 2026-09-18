@@ -57,7 +57,6 @@ class InvestigationSummary(BaseModel):
     status: str
     confidence: float
     evidence_count: int
-    contradiction_count: int
     created_at: str
     updated_at: str
 
@@ -167,7 +166,6 @@ async def list_investigations(container: Container, ctx: Ctx, limit: int = 25) -
             status=s.status.value,
             confidence=s.confidence,
             evidence_count=len(s.evidence.items),
-            contradiction_count=len(s.contradictions),
             created_at=s.created_at.isoformat(),
             updated_at=s.updated_at.isoformat(),
         )

@@ -33,20 +33,6 @@ export const evidenceItemSchema = z.object({
 });
 export type EvidenceItem = z.infer<typeof evidenceItemSchema>;
 
-export const contradictionSchema = z.object({
-  contradiction_id: z.string(),
-  statement: z.string(),
-  evidence_a: z.string(),
-  evidence_b: z.string(),
-  kind: z.string().default('value_conflict'),
-  detail: z.string().default(''),
-  resolution: z.string().nullable().default(null),
-  resolved_in_favour_of: z.string().nullable().default(null),
-  severity: z.number().default(0.5),
-  entity_id: z.string().nullable().default(null),
-});
-export type Contradiction = z.infer<typeof contradictionSchema>;
-
 export const timelineEventSchema = z.object({
   event_id: z.string(),
   occurred_at: isoDateTimeSchema,

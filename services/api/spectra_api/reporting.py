@@ -11,7 +11,6 @@ from spectra_schemas import InvestigationAnswer, format_timestamp
 STATUS_LABEL = {
     "supported": "Supported",
     "partially_supported": "Partially supported",
-    "contested": "Contested",
     "insufficient_evidence": "Insufficient evidence",
     "degraded": "Degraded",
     "failed": "Failed",
@@ -33,7 +32,6 @@ def render_markdown(answer: InvestigationAnswer) -> str:
 
     lines += _claims(answer)
     lines += _evidence(answer)
-    lines += _contradictions(answer)
     lines += _timeline(answer)
     lines += _links(answer)
     lines += _why(answer)
@@ -48,13 +46,13 @@ def _claims(answer: InvestigationAnswer) -> list[str]:
     out = [
         "## Claims",
         "",
-        "| # | Statement | Status | Confidence | For | Against |",
-        "|---|---|---|---|---|---|",
+        "| # | Statement | Status | Confidence | Supporting evidence |",
+        "|---|---|---|---|---|",
     ]
     for claim in answer.claims:
         out.append(
-            f"| {claim.claim_id} | {claim.text} | {claim.status.value} | {claim.confidence:.0%} "
-            f"| {len(claim.supporting_evidence)} | {len(claim.contradicting_evidence)} |"
+            f"| {claim.claim_id} | {claim.text} | {claim.status.value} "
+            f"| {claim.confidence:.0%} | {len(claim.supporting_evidence)} |"
         )
     out.append("")
     probed = [c for c in answer.claims if c.disproof_probe]
@@ -78,19 +76,6 @@ def _evidence(answer: InvestigationAnswer) -> list[str]:
             f"· reliability {float(item.get('reliability', 0)):.2f} — {item.get('reliability_reason', '')}_",
             "",
         ]
-    return out
-
-
-def _contradictions(answer: InvestigationAnswer) -> list[str]:
-    if not answer.contradictions:
-        return []
-    out = ["## Contradictions", ""]
-    for c in answer.contradictions:
-        out.append(f"- **{c.statement}** ({c.kind}, severity {c.severity:.2f})")
-        if c.detail:
-            out.append(f"  - {c.detail}")
-        out.append(f"  - Resolution: {c.resolution or 'unresolved — both sides stand'}")
-    out.append("")
     return out
 
 
@@ -140,7 +125,6 @@ def _autopsy(answer: InvestigationAnswer) -> list[str]:
         f"- Evidence used / rejected: {a.evidence_used} / {a.evidence_rejected}",
         f"- Tool calls: {a.tool_calls}",
         f"- Claims made / refuted: {a.claims_made} / {a.claims_refuted}",
-        f"- Contradictions: {a.contradictions}",
         f"- Evidence diversity: {a.evidence_diversity:.2f}",
         f"- Total latency: {a.total_latency_ms / 1000:.1f}s",
         f"- Models used: {', '.join(a.models_used) or 'none'}",

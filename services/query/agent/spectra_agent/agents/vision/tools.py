@@ -27,7 +27,7 @@ from ...tools.base import Tool, require_service
 from ...tools.modality_search import ModalitySearchTool
 from ...tools.payloads import evidence_payload
 from ...tools.schemas import EVIDENCE_OUTPUT, QUERY, SOURCE_IDS, TOP_K, obj, string
-from ...tools.timeouts import LOCATOR_TIMEOUT_SECONDS, SEARCH_MEDIA_TIMEOUT_SECONDS
+from ...tools.timeouts import LOCATOR_TIMEOUT_SECONDS, SEARCH_TIMEOUT_SECONDS
 
 
 class SearchImagesTool(ModalitySearchTool):
@@ -49,7 +49,7 @@ class SearchImagesTool(ModalitySearchTool):
             required=["query"],
         ),
         output_schema=EVIDENCE_OUTPUT,
-        timeout_seconds=SEARCH_MEDIA_TIMEOUT_SECONDS,
+        timeout_seconds=SEARCH_TIMEOUT_SECONDS,
         gpu_heavy=True,
         requires_flag="image",
         cost_hint=2.0,

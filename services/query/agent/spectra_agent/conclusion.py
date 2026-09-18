@@ -1,7 +1,7 @@
 """Deciding what the answer is allowed to claim.
 
-Status and confidence are derived from the evidence, the verification result
-and the contradictions - never from the fluency of the generated text.
+Status and confidence are derived from the evidence and the verification
+result - never from the fluency of the generated text.
 """
 
 from __future__ import annotations
@@ -20,8 +20,6 @@ def answer_status(state: InvestigationState, score: float, threshold: float) -> 
     authoritative = sufficiency.authoritative_item(state.evidence, intent)
     if not state.evidence.items or (score < threshold and authoritative is None):
         return AnswerStatus.INSUFFICIENT_EVIDENCE
-    if any(c.resolution is None for c in state.contradictions):
-        return AnswerStatus.CONTESTED
     if state.verification is not None and state.verification.supported:
         return AnswerStatus.SUPPORTED
     if state.degraded:

@@ -34,7 +34,7 @@ log = get_logger(__name__)
 
 
 class ReasoningPhases:
-    """Claim building and scoring, disproof, contradiction sweep and verification."""
+    """Claim building and scoring, disproof and verification."""
 
     def __init__(
         self,
@@ -127,31 +127,6 @@ class ReasoningPhases:
         run.state = self._rescore(state, state.claims)
         return run.state
 
-    # -- contradictions ---------------------------------------------------
-    async def contradictions(self, run: Run) -> InvestigationState:
-        state = run.state
-        if len(state.evidence.items) < 2:
-            return state
-        if run.contradictions_checked_at == len(state.evidence.items):
-            run.state = await self._tracer.step(
-                state,
-                AgentName.CONTRADICTION,
-                title="Conflict check already current",
-                status=TraceStatus.SKIPPED,
-                output_summary="no evidence has been added since the last contradiction check",
-            )
-            return run.state
-        result = await run.call("detect_contradictions", {})
-        state = observation.observe(run.state, [result])
-        run.state = await self._tracer.step(
-            state,
-            AgentName.CONTRADICTION,
-            title="Checked the evidence for conflicts",
-            status=TraceStatus.OK if result.ok else TraceStatus.ERROR,
-            output_summary=result.summary or result.error or "",
-        )
-        return run.state
-
     # -- verification -----------------------------------------------------
     async def verify(self, run: Run) -> InvestigationState:
         state = run.state
@@ -172,7 +147,7 @@ class ReasoningPhases:
         if state.verification is None:
             # The tool could not run (budget, flags); the deterministic checks still must.
             verification = await self._verifier.verify(
-                statement, state.evidence, None, contradictions=state.contradictions, allow_llm=False
+                statement, state.evidence, None, allow_llm=False
             )
             state = state_ops.touch(state, verification=verification)
         state = _record_verification(state, leader)

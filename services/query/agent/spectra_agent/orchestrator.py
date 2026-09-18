@@ -3,7 +3,7 @@
     understand -> plan -> select tools -> execute (parallel where independent)
       -> observe -> update evidence / entities / graph -> build claims
       -> sufficient? --no--> replan (new tools OR new claims) --loop
-                     --yes-> disproof the leading claim -> contradictions
+                     --yes-> disproof the leading claim
                              -> verify -> synthesise
 
 The loop is driven by the evidence gap, not by a script: what gets called next
@@ -300,7 +300,6 @@ class SpectraBrain:
                     output_summary="; ".join(call.describe() for call in plan),
                 )
         await self._phases.disproof(run)
-        await self._phases.contradictions(run)
         state = await self._phases.verify(run)
         return await self._conclude(state, allow_llm=True)
 

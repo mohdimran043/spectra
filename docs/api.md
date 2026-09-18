@@ -154,12 +154,6 @@ Returns `202` + `{"investigation_id":"inv_...","case_id":"case_...","status":"ru
                                           "page": 14, "section": "Authentication"},
                               "index_version": "idx_0001", "created_at": "2026-03-11T10:42:01Z"},
                "occurred_at": "2026-03-11T10:42:01Z", "retrieved_by": "search_documents"}],
- "contradictions": [{"contradiction_id": "con_1", "entity_id": "ent_incident_1",
-                     "statement": "INC1829 status is reported as both 'approved' and 'rejected'",
-                     "evidence_a": "evd_2", "evidence_b": "evd_3", "kind": "value_conflict",
-                     "detail": "The superseded draft says rejected; the approved v2 says approved.",
-                     "resolution": "Resolved in favour of evd_2: approved beats superseded.",
-                     "resolved_in_favour_of": "evd_2", "severity": 0.7}],
  "timeline": [{"event_id": "evt_1", "occurred_at": "2026-03-11T10:42:01Z",
                "label": "Transaction created", "modality": "database",
                "evidence_ids": ["evd_1"], "precision": "exact"}],
@@ -169,15 +163,15 @@ Returns `202` + `{"investigation_id":"inv_...","case_id":"case_...","status":"ru
              "supporting_evidence": ["evd_1", "evd_2"], "contradicting_evidence": [],
              "disproof_probe": "A successful authentication call for TX82931 inside the failure window.",
              "disproof_searched": true, "verified": true,
-             "verification_note": "Two independent sources; no unresolved contradiction.",
+             "verification_note": "Two independent sources; no counter-evidence found.",
              "rationale": "The failure_reason field and the post-mortem agree."},
             {"claim_id": "C2", "text": "No fraud rule fired for TX82931.",
-             "confidence": 0.58, "status": "weak",
+             "confidence": 0.71, "status": "supported",
              "supporting_evidence": ["evd_1"], "contradicting_evidence": [],
              "disproof_probe": "A fraud-service decision log showing a rule match for TX82931.",
              "disproof_searched": true, "verified": true,
-             "verification_note": "One source only; no independent corroboration found.",
-             "rationale": "Absence of a rule-match row in the only log that would carry one."}],
+             "verification_note": "",
+             "rationale": ""}],
  "application_links": [{"entity_id": "ent_transaction_ab12", "entity_type": "transaction",
                         "label": "Open Transaction", "record_id": "TX82931",
                         "url": "http://localhost:3001/transactions/TX82931",
@@ -190,7 +184,7 @@ Returns `202` + `{"investigation_id":"inv_...","case_id":"case_...","status":"ru
              "candidates_retrieved": 184, "evidence_used": 3, "evidence_rejected": 29,
              "rejection_reasons": {"below relevance floor": 24, "permission denied": 5},
              "tool_calls": 18, "tool_breakdown": {"search_documents": 6, "query_database": 3},
-             "contradictions": 1, "total_latency_ms": 8400.0,
+             "total_latency_ms": 8400.0,
              "stage_latency_ms": {"candidate_generation": 31.2, "rerank": 88.0},
              "models_used": ["ollama/qwen3:30b-a3b", "transformers/BAAI/bge-m3"],
              "gpu_peak_mb": null,
@@ -198,19 +192,19 @@ Returns `202` + `{"investigation_id":"inv_...","case_id":"case_...","status":"ru
              "degraded": false, "degraded_reasons": []},
  "metrics": {"total_latency_ms": 8400.0, "tool_calls": 18, "iterations": 3,
              "candidates_retrieved": 184, "evidence_used": 3, "evidence_rejected": 29,
-             "contradictions": 1, "claims_made": 2, "claims_refuted": 0,
-             "model_latency_ms": {"deep_brain": 5270.0},
-             "models_used": ["ollama/qwen3:30b-a3b"], "stage_latency_ms": {"rerank": 88.0},
-             "gpu_peak_mb": null, "tokens": {"deep_brain": 512},
-             "sources_considered": ["src_enterprise", "src_docs", "src_media"]},
- "degraded": false, "degraded_reasons": [], "followups": ["Who approved INC1829?"]}
+             "claims_made": 2, "claims_refuted": 0,
+             "model_latency_ms": {},
+             "models_used": ["ollama/qwen3:30b-a3b"], "stage_latency_ms": {},
+             "gpu_peak_mb": null, "tokens": {},
+             "sources_considered": ["src_enterprise", "src_docs"]},
+ "degraded": false, "degraded_reasons": [], "followups": ["Which other transactions hit the same incident?"]}
 ```
 
 Enumerations in that payload:
 
 | Field | Values |
 |---|---|
-| `status` | `supported` · `partially_supported` · `contested` · `insufficient_evidence` · `degraded` · `failed` |
+| `status` | `supported` · `partially_supported` · `insufficient_evidence` · `degraded` · `failed` |
 | `confidence_label` | `high` · `medium` · `low` · `insufficient` |
 | `claims[].status` | `supported` · `weak` · `contradicted` · `refuted` · `insufficient` |
 | `evidence[].stance` | `supporting` · `contradicting` · `neutral` |
