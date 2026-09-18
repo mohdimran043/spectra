@@ -1,12 +1,14 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { cn } from '@/components/cn';
 import { IconSearch } from '@/components/icons';
 import { ErrorState } from '@/components/states';
-import { runAnswer } from '@/lib/api';
+import { listSources, runAnswer } from '@/lib/api';
+import type { SourceDescriptor } from '@/lib/schemas/system';
 import type { AnswerResponse } from '@/lib/schemas/search';
 
 import { ResultCard } from './result-card';
@@ -26,9 +28,18 @@ import { ResultCard } from './result-card';
 export function SearchConsole() {
   const [query, setQuery] = useState('');
   const [asked, setAsked] = useState('');
+  /** Empty means every source; the picker never silently narrows a search. */
+  const [chosen, setChosen] = useState<readonly string[]>([]);
+
+  const sources = useQuery({
+    queryKey: ['sources'],
+    queryFn: ({ signal }) => listSources(signal),
+    staleTime: 60_000,
+  });
+  const available = (sources.data ?? []).filter((source) => source.enabled);
 
   const search = useMutation({
-    mutationFn: (q: string) => runAnswer(q),
+    mutationFn: (q: string) => runAnswer(q, chosen),
     onSuccess: (_data, q) => setAsked(q),
   });
 
@@ -38,6 +49,20 @@ export function SearchConsole() {
     if (!trimmed || search.isPending) return;
     search.mutate(trimmed);
   };
+
+  // `/?q=...` re-runs a search from the Activity page. It fires once per
+  // distinct query so a re-render never resubmits.
+  const params = useSearchParams();
+  const deepLink = params.get('q')?.trim() ?? '';
+  const ran = useRef<string | null>(null);
+  useEffect(() => {
+    if (!deepLink || ran.current === deepLink) return;
+    ran.current = deepLink;
+    setQuery(deepLink);
+    search.mutate(deepLink);
+    // `search` is a stable mutation object; re-running on its identity would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLink]);
 
   const data = search.data;
   const hits = data?.results.hits ?? [];
@@ -90,6 +115,10 @@ export function SearchConsole() {
           </div>
         </form>
 
+        {available.length > 1 && (
+          <SourcePicker sources={available} chosen={chosen} onChange={setChosen} />
+        )}
+
         {!data && !search.isError && (
           <p className="mt-3 max-w-[60ch] text-mark text-ink-2">
             Documents, images, video, audio and records are searched together. If nothing in the
@@ -109,7 +138,12 @@ export function SearchConsole() {
       {settled && data && (
         <section className="mt-8" aria-live="polite">
           {hits.length === 0 ? (
-            <NothingMatched query={asked} screened={data.results.total_candidates} />
+            <NothingMatched
+              query={asked}
+              screened={data.results.total_candidates}
+              narrowed={chosen.length > 0 ? chosen.length : null}
+              total={available.length}
+            />
           ) : (
             <>
               {data.answer && <AnswerPanel answer={data} />}
@@ -117,6 +151,8 @@ export function SearchConsole() {
                 count={hits.length}
                 screened={data.results.total_candidates}
                 ms={data.results.latency_ms}
+                narrowed={chosen.length > 0 ? chosen.length : null}
+                total={available.length}
               />
               <ol className="mt-1">
                 {hits.map((hit, index) => (
@@ -147,13 +183,103 @@ function AnswerPanel({ answer }: { answer: AnswerResponse }) {
   );
 }
 
-function ResultSummary({ count, screened, ms }: { count: number; screened: number; ms: number }) {
+/**
+ * Which sources to search.
+ *
+ * Nothing selected means everything, which is both the default and the honest
+ * reading of an empty filter - a picker that silently narrowed the search would
+ * make an empty result set impossible to explain.
+ */
+function SourcePicker({
+  sources,
+  chosen,
+  onChange,
+}: {
+  sources: readonly SourceDescriptor[];
+  chosen: readonly string[];
+  onChange: (next: readonly string[]) => void;
+}) {
+  const toggle = (id: string) =>
+    onChange(chosen.includes(id) ? chosen.filter((s) => s !== id) : [...chosen, id]);
+
+  return (
+    <fieldset className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <legend className="sr-only">Sources to search</legend>
+      <span className="mr-0.5 text-micro uppercase tracking-[0.07em] text-ink-3">Sources</span>
+
+      <SourceChip
+        label="All"
+        selected={chosen.length === 0}
+        onClick={() => onChange([])}
+      />
+      {sources.map((source) => (
+        <SourceChip
+          key={source.source_id}
+          label={source.name}
+          detail={source.asset_count ? `${source.asset_count.toLocaleString()} items` : undefined}
+          selected={chosen.includes(source.source_id)}
+          onClick={() => toggle(source.source_id)}
+        />
+      ))}
+    </fieldset>
+  );
+}
+
+function SourceChip({
+  label,
+  detail,
+  selected,
+  onClick,
+}: {
+  label: string;
+  detail?: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      title={detail}
+      className={cn(
+        'rounded-full border px-2.5 py-1 text-micro transition-colors',
+        'focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-focus',
+        selected
+          ? 'border-focus bg-held-weak font-semibold text-ink'
+          : 'border-rule bg-leaf text-ink-2 hover:border-rule-strong hover:text-ink-1',
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** How many sources a narrowed search actually looked at. */
+function scopeNote(narrowed: number | null, total: number): string {
+  return narrowed === null ? '' : ` across ${narrowed} of ${total} sources`;
+}
+
+function ResultSummary({
+  count,
+  screened,
+  ms,
+  narrowed,
+  total,
+}: {
+  count: number;
+  screened: number;
+  ms: number;
+  narrowed: number | null;
+  total: number;
+}) {
   return (
     <p className="border-b border-rule pb-2 text-micro text-ink-2">
       <span className="font-mono tabular text-ink-1">{count}</span>{' '}
       {count === 1 ? 'result' : 'results'} from{' '}
       <span className="font-mono tabular">{screened.toLocaleString()}</span> candidates screened in{' '}
       <span className="font-mono tabular">{(ms / 1000).toFixed(2)}s</span>
+      {scopeNote(narrowed, total)}
     </p>
   );
 }
@@ -162,14 +288,27 @@ function ResultSummary({ count, screened, ms }: { count: number; screened: numbe
  * Not an error. The index was searched in full and nothing in it qualified,
  * which is the honest outcome for a term the corpus does not contain.
  */
-function NothingMatched({ query, screened }: { query: string; screened: number }) {
+function NothingMatched({
+  query,
+  screened,
+  narrowed,
+  total,
+}: {
+  query: string;
+  screened: number;
+  narrowed: number | null;
+  total: number;
+}) {
   return (
     <div className="border border-rule bg-leaf-raised px-5 py-10 text-center">
       <p className="text-body font-semibold text-ink">Nothing matched &ldquo;{query}&rdquo;.</p>
       <p className="mx-auto mt-2 max-w-[52ch] text-mark text-ink-2">
         All <span className="font-mono tabular">{screened.toLocaleString()}</span> candidates were
-        screened and none carry this term, a matching identifier, or a close enough reading to be
-        worth showing. Try different words, or check Sources for what is indexed.
+        screened{scopeNote(narrowed, total)} and none carry this term, a matching identifier, or a
+        close enough reading to be worth showing.{' '}
+        {narrowed !== null
+          ? 'Widen to all sources, or try different words.'
+          : 'Try different words, or check Sources for what is indexed.'}
       </p>
     </div>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 
 import { SearchConsole } from '@/features/search/search-console';
 
@@ -8,5 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return <SearchConsole />;
+  // `SearchConsole` reads `?q=` to re-run a search from the Activity page, and
+  // `useSearchParams` forces client rendering. The boundary keeps the shell
+  // static so the page still prerenders.
+  return (
+    <Suspense fallback={null}>
+      <SearchConsole />
+    </Suspense>
+  );
 }

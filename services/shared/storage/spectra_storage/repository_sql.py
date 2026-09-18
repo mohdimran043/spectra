@@ -20,6 +20,7 @@ from spectra_schemas import (
     EntityLink,
     IndexVersion,
     IngestJob,
+    SearchHistoryEntry,
     SourceDescriptor,
 )
 from sqlalchemy import Select, delete, event, func, select
@@ -39,6 +40,7 @@ from .models import (
     EntityRow,
     IndexVersionRow,
     IngestJobRow,
+    SearchHistoryRow,
     SourceRow,
 )
 from .repository import Repository
@@ -57,6 +59,7 @@ STATS_TABLES: dict[str, type[Base]] = {
     "entities": EntityRow,
     "entity_links": EntityLinkRow,
     "ingest_jobs": IngestJobRow,
+    "search_history": SearchHistoryRow,
     "index_versions": IndexVersionRow,
 }
 
@@ -325,6 +328,26 @@ class SqlRepository(Repository):
     async def list_jobs(self, limit: int = 50) -> list[IngestJob]:
         statement = select(IngestJobRow).order_by(IngestJobRow.updated_at.desc(), IngestJobRow.job_id).limit(limit)
         return [mappers.job_model(row) for row in await self._scalars(statement)]
+
+    # -- search history ---------------------------------------------------
+    async def record_search(self, entry: SearchHistoryEntry) -> None:
+        async with self._sessions() as session, session.begin():
+            await self._upsert(
+                session, SearchHistoryRow, [mappers.search_history_values(entry)], ["search_id"]
+            )
+
+    async def list_searches(self, limit: int = 50) -> list[SearchHistoryEntry]:
+        statement = (
+            select(SearchHistoryRow)
+            .order_by(SearchHistoryRow.searched_at.desc(), SearchHistoryRow.search_id)
+            .limit(limit)
+        )
+        return [mappers.search_history_model(row) for row in await self._scalars(statement)]
+
+    async def clear_searches(self) -> int:
+        async with self._sessions() as session, session.begin():
+            result = await session.execute(delete(SearchHistoryRow))
+            return int(result.rowcount or 0)
 
     # -- index versioning -------------------------------------------------
     async def record_index_version(self, version: IndexVersion) -> None:

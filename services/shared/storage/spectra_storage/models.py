@@ -184,6 +184,28 @@ class IngestJobRow(Base):
     stages_completed: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
 
 
+class SearchHistoryRow(Base):
+    """What was asked, and what came back.
+
+    Write-only from the search path's point of view: nothing here is ever read
+    back into retrieval, so this table can be truncated at any time without
+    changing a single result.
+    """
+
+    __tablename__ = "search_history"
+
+    search_id: Mapped[str] = mapped_column(String(ID_LENGTH), primary_key=True)
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    mode: Mapped[str] = mapped_column(String(SHORT_LENGTH), default="fast", nullable=False)
+    result_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    candidates_screened: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    latency_ms: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    source_ids: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    answered: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    user_id: Mapped[str | None] = mapped_column(String(ID_LENGTH), nullable=True, index=True)
+    searched_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, index=True)
+
+
 class IndexVersionRow(Base):
     __tablename__ = "index_versions"
 

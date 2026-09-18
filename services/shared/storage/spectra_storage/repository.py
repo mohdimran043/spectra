@@ -20,6 +20,7 @@ from spectra_schemas import (
     EntityLink,
     IndexVersion,
     IngestJob,
+    SearchHistoryEntry,
     SourceDescriptor,
 )
 
@@ -129,6 +130,16 @@ class Repository(ABC):
 
     @abstractmethod
     async def list_jobs(self, limit: int = 50) -> list[IngestJob]: ...
+
+    # -- search history ---------------------------------------------------
+    @abstractmethod
+    async def record_search(self, entry: SearchHistoryEntry) -> None: ...
+
+    @abstractmethod
+    async def list_searches(self, limit: int = 50) -> list[SearchHistoryEntry]: ...
+
+    @abstractmethod
+    async def clear_searches(self) -> int: ...
 
     # -- index versioning -------------------------------------------------
     @abstractmethod

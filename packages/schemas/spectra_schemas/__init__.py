@@ -10,6 +10,7 @@ from .catalog import (
     Chunk,
     IndexVersion,
     IngestJob,
+    SearchHistoryEntry,
     SourceDescriptor,
     SourceHealth,
 )
@@ -115,6 +116,7 @@ __all__ = [
     "SYSTEM",
     "ScoreBreakdown",
     "SearchFilters",
+    "SearchHistoryEntry",
     "SearchHit",
     "SearchMode",
     "SearchRequest",

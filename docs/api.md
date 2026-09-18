@@ -197,9 +197,14 @@ Request = `AnswerRequest`:
 {
   "query": "did the transaction fail because of a timeout?",
   "mode": "fast|deep",
-  "top_k": 6
+  "top_k": 6,
+  "source_ids": ["src_docs"]
 }
 ```
+
+`source_ids` restricts the search to those sources. An empty list - the default - means every
+source the caller is permitted to read. The same filter is available on `POST /api/search` as
+`filters.source_ids`.
 
 Response = `AnswerResponse`:
 
@@ -231,6 +236,44 @@ Response = `AnswerResponse`:
 
 The `results` field carries the full `SearchResponse` so the UI can show the evidence
 independently of whether an answer was synthesised.
+
+---
+
+## 3a. Search history
+
+Every completed search is recorded. Recording happens in a background task *after* the response
+is assembled, so a slow or failing write can never delay a search or change its result - and
+nothing here is ever read back into retrieval. The table can be truncated at any time without
+affecting a single result.
+
+### `GET /api/search/history`
+
+Query parameters: `limit` (1-200, default 50). Most recent first.
+
+```json
+[
+  {
+    "search_id": "sh_0d57fb49e02d45cb",
+    "query": "authentication timeout",
+    "mode": "fast",
+    "result_count": 7,
+    "candidates_screened": 80,
+    "latency_ms": 191.2,
+    "source_ids": ["src_demo"],
+    "answered": true,
+    "user_id": "local-user",
+    "searched_at": "2026-09-18T17:39:44.291720Z"
+  }
+]
+```
+
+A search that matched nothing is recorded with `result_count: 0`, not skipped - "I looked and
+found nothing" is precisely the row worth keeping.
+
+### `DELETE /api/search/history`
+
+Requires `manage_sources`. Forgets every recorded search and returns `204`. Nothing indexed is
+touched.
 
 ---
 

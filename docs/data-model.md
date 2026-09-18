@@ -39,6 +39,9 @@ entity_links(entity_id IDX, chunk_id IDX, asset_id, source_id, modality, surface
 ingest_jobs(job_id PK, asset_id, source_id, status, stage, progress, message, error,
             created_at, updated_at, stages_completed)
 
+search_history(search_id PK, query, mode, result_count, candidates_screened, latency_ms,
+               source_ids JSON, answered, user_id IDX, searched_at IDX)
+
 index_versions(index_version PK, embedding_model, embedding_dimension, parser_version,
                vision_model, speech_model, ocr_engine, created_at)
 

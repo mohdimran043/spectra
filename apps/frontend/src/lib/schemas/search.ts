@@ -126,3 +126,18 @@ export const answerResponseSchema = z.object({
   results: searchResponseSchema,
 });
 export type AnswerResponse = z.infer<typeof answerResponseSchema>;
+
+/** `GET /api/search/history`: one search someone ran. */
+export const searchHistoryEntrySchema = z.object({
+  search_id: z.string(),
+  query: z.string(),
+  mode: searchModeSchema.default('fast'),
+  result_count: z.number().default(0),
+  candidates_screened: z.number().default(0),
+  latency_ms: z.number().default(0),
+  source_ids: z.array(z.string()).default([]),
+  answered: z.boolean().default(false),
+  user_id: z.string().nullish(),
+  searched_at: isoDateTimeSchema,
+});
+export type SearchHistoryEntry = z.infer<typeof searchHistoryEntrySchema>;

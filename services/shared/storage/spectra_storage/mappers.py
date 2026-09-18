@@ -21,6 +21,7 @@ from spectra_schemas import (
     EntityLink,
     IndexVersion,
     IngestJob,
+    SearchHistoryEntry,
     SourceDescriptor,
 )
 
@@ -31,6 +32,7 @@ from .models import (
     EntityRow,
     IndexVersionRow,
     IngestJobRow,
+    SearchHistoryRow,
     SourceRow,
 )
 
@@ -299,3 +301,34 @@ def index_version_model(row: IndexVersionRow) -> IndexVersion:
     )
 
 
+
+
+# -- search history -------------------------------------------------------
+def search_history_values(entry: SearchHistoryEntry) -> dict[str, Any]:
+    return {
+        "search_id": entry.search_id,
+        "query": entry.query,
+        "mode": entry.mode.value,
+        "result_count": entry.result_count,
+        "candidates_screened": entry.candidates_screened,
+        "latency_ms": entry.latency_ms,
+        "source_ids": list(entry.source_ids),
+        "answered": entry.answered,
+        "user_id": entry.user_id,
+        "searched_at": entry.searched_at,
+    }
+
+
+def search_history_model(row: SearchHistoryRow) -> SearchHistoryEntry:
+    return SearchHistoryEntry(
+        search_id=row.search_id,
+        query=row.query,
+        mode=row.mode,
+        result_count=row.result_count,
+        candidates_screened=row.candidates_screened,
+        latency_ms=row.latency_ms,
+        source_ids=list(row.source_ids or []),
+        answered=row.answered,
+        user_id=row.user_id,
+        searched_at=row.searched_at,
+    )

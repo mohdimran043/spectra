@@ -21,6 +21,7 @@ import {
   type DatabaseQueryRequest,
   type SearchRequest,
   answerResponseSchema,
+  searchHistoryEntrySchema,
 } from './schemas/search';
 import { z as zod } from 'zod';
 
@@ -192,12 +193,25 @@ const SEARCH_PATHS: Record<SearchScope, string> = {
   audio: '/api/search/audio',
 };
 
-export const runAnswer = (query: string, signal?: AbortSignal) =>
+export const runAnswer = (
+  query: string,
+  sourceIds: readonly string[] = [],
+  signal?: AbortSignal,
+) =>
   apiRequest('/api/answer', answerResponseSchema, {
     method: 'POST',
-    body: { query, mode: 'fast', top_k: 8 },
+    body: { query, mode: 'fast', top_k: 8, source_ids: sourceIds },
     signal,
   });
+
+export const listSearchHistory = (signal?: AbortSignal) =>
+  apiRequest('/api/search/history', searchHistoryEntrySchema.array(), { signal });
+
+export const clearSearchHistory = () =>
+  apiRequest('/api/search/history', zod.unknown(), { method: 'DELETE' });
+
+export const listUploadJobs = (signal?: AbortSignal) =>
+  apiRequest('/api/uploads', ingestJobSchema.array(), { signal });
 
 export const runSearch = (
   scope: SearchScope,

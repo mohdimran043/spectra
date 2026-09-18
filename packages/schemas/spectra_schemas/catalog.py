@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .enums import AssetKind, JobStatus, Modality, SourceStatus, SourceType
+from .enums import AssetKind, JobStatus, Modality, SearchMode, SourceStatus, SourceType
 
 
 def _now() -> datetime:
@@ -95,6 +95,33 @@ class IngestJob(BaseModel):
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
     stages_completed: list[str] = Field(default_factory=list)
+
+
+class SearchHistoryEntry(BaseModel):
+    """One search someone actually ran.
+
+    Recorded after the fact and never read back into retrieval, so a slow or
+    failed write can never change what a search returns. It exists so an
+    operator can see what has been asked, what came back, and re-run it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    search_id: str
+    query: str
+    mode: SearchMode = SearchMode.FAST
+    result_count: int = 0
+    candidates_screened: int = 0
+    latency_ms: float = 0.0
+    source_ids: list[str] = Field(default_factory=list)
+    answered: bool = False
+    user_id: str | None = None
+    searched_at: datetime = Field(default_factory=_now)
+
+    @property
+    def found_nothing(self) -> bool:
+        """An empty result set is a real outcome, and worth seeing in the list."""
+        return self.result_count == 0
 
 
 class IndexVersion(BaseModel):

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
 from pydantic import BaseModel
-from spectra_schemas import Modality, SearchRequest, SearchResponse
+from spectra_config.logging import get_logger
+from spectra_schemas import Modality, SearchHistoryEntry, SearchRequest, SearchResponse
 
-from ..dependencies import Container, Ctx, service_or_503
+from .. import history
+from ..dependencies import Container, Ctx, CtxManageSources, service_or_503
 from ..errors import UploadRejected
+
+log = get_logger(__name__)
 
 router = APIRouter(tags=["search"])
 
@@ -22,7 +26,27 @@ class ImageSearchResponse(BaseModel):
 @router.post("/search", response_model=SearchResponse)
 async def unified_search(body: SearchRequest, container: Container, ctx: Ctx) -> SearchResponse:
     service = service_or_503(container, "search")
-    return await service.search(body, ctx)
+    response = await service.search(body, ctx)
+    history.record(container, body, response, ctx)
+    return response
+
+
+@router.get("/search/history", response_model=list[SearchHistoryEntry])
+async def search_history(
+    container: Container,
+    ctx: Ctx,
+    limit: int = Query(default=history.DEFAULT_HISTORY_LIMIT, ge=1, le=history.MAX_HISTORY_LIMIT),
+) -> list[SearchHistoryEntry]:
+    """What has been searched, most recent first."""
+    return await container.storage.repository.list_searches(limit=limit)
+
+
+@router.delete("/search/history", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def clear_search_history(container: Container, ctx: CtxManageSources) -> Response:
+    """Forget every recorded search. Nothing indexed is touched."""
+    cleared = await container.storage.repository.clear_searches()
+    log.info("history.cleared", rows=cleared, user_id=ctx.user_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 async def _modality_search(

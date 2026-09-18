@@ -42,6 +42,13 @@ The answer is generated from the retrieved excerpts and nothing else, then every
 checked for a citation to one of them. Uncited sentences are dropped. If nothing survives, no
 answer is shown and the response says why - the results still stand on their own.
 
+**3. You choose what it searches, and it remembers what you asked.**
+
+Pick any subset of sources before searching; the result summary says "across 2 of 5 sources" so a
+thin result set is never a mystery. The **Activity** page shows ingestion still in flight - stage
+and progress, refreshed while anything is running - above every search that has been run, what it
+found, and how long it took. Click one to run it again.
+
 Plus the engineering idea that makes it affordable: **ingestion and search are strictly
 separated**. OCR, transcription, captioning, scene detection and embedding happen once, at
 ingestion. Search reads indexes. Attempting expensive media work at query time raises
